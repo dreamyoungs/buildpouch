@@ -1,6 +1,6 @@
 # BuildPouch 기여 가이드
 
-[프로젝트 README](../README.md) | [English](CONTRIBUTING.md) | [한국어](CONTRIBUTING.ko.md) | [日本語](CONTRIBUTING.ja.md)
+[프로젝트 README](../README.md) | [English](../.github/CONTRIBUTING.md) | [한국어](CONTRIBUTING.ko.md) | [日本語](CONTRIBUTING.ja.md)
 
 BuildPouch 개선에 참여해 주셔서 감사합니다. 변경은 한 회사나 특정 모노레포에 종속되지 않도록 작고 검증 가능하게 유지해 주세요.
 

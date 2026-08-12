@@ -1,6 +1,6 @@
 # セキュリティポリシー
 
-[プロジェクトREADME](../README.md) | [English](SECURITY.md) | [한국어](SECURITY.ko.md) | [日本語](SECURITY.ja.md)
+[プロジェクトREADME](../README.md) | [English](../.github/SECURITY.md) | [한국어](SECURITY.ko.md) | [日本語](SECURITY.ja.md)
 
 ## サポート対象のバージョン
 

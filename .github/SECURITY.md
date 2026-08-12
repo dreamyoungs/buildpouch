@@ -1,6 +1,6 @@
 # Security Policy
 
-[Project README](../README.md) | [English](SECURITY.md) | [한국어](SECURITY.ko.md) | [日本語](SECURITY.ja.md)
+[Project README](../README.md) | [English](SECURITY.md) | [한국어](../docs/SECURITY.ko.md) | [日本語](../docs/SECURITY.ja.md)
 
 ## Supported versions
 
