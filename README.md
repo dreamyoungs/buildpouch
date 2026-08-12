@@ -10,6 +10,14 @@ BuildPouch is a CLI project for creating safe, minimal build context archives fr
 
 BuildPouch is in early development. The `inspect`, `pack`, and `submit` MVP commands are available from source. The public interface may change, and no npm package has been released yet.
 
+## AI-assisted development
+
+BuildPouch makes extensive and intentional use of AI-assisted development tools across design, implementation, testing, documentation, translation, and review. We expect to continue using AI actively as the project evolves.
+
+AI assistance does not transfer responsibility away from the maintainers. Maintainers remain accountable for technical decisions, review, security, licensing, and releases, and AI-assisted work is held to the same quality and testing standards as any other contribution.
+
+Contributions are welcome whether they are written by people, assisted by AI, or combine both. Please disclose material AI use when it introduces review, provenance, or licensing considerations that maintainers should evaluate.
+
 ## Local development
 
 BuildPouch currently requires Node.js 24 and npm 11.12.1.
