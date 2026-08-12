@@ -1,6 +1,6 @@
 # BuildPouch
 
-[English](README.md) | [한국어](README.ko.md) | [日本語](README.ja.md)
+[English](README.md) | [한국어](docs/README.ko.md) | [日本語](docs/README.ja.md)
 
 > Pack only what your build needs.
 
@@ -245,9 +245,9 @@ Repository-owned tasks may prepare compiled output or a pruned dependency tree b
 
 ## Contributing
 
-The project is being designed in public. Please read the [contribution guide](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md), and use [GitHub Issues](https://github.com/dreamyoungs/buildpouch/issues) for questions and proposals before opening a substantial pull request. Report vulnerabilities through the [Security Policy](SECURITY.md), never through a public issue.
+The project is being designed in public. Please read the [contribution guide](docs/CONTRIBUTING.md) and [Code of Conduct](docs/CODE_OF_CONDUCT.md), and use [GitHub Issues](https://github.com/dreamyoungs/buildpouch/issues) for questions and proposals before opening a substantial pull request. Report vulnerabilities through the [Security Policy](docs/SECURITY.md), never through a public issue.
 
-Notable changes are tracked in the [Changelog](CHANGELOG.md).
+Notable changes are tracked in the [Changelog](docs/CHANGELOG.md).
 
 ## License
 

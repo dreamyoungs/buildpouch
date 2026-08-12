@@ -1,5 +1,7 @@
 # Changelog
 
+[Project README](../README.md)
+
 All notable changes to BuildPouch will be documented in this file. The project intends to follow [Semantic Versioning](https://semver.org/) after its first public release.
 
 ## Unreleased

@@ -1,6 +1,6 @@
 # BuildPouch
 
-[English](README.md) | [한국어](README.ko.md) | [日本語](README.ja.md)
+[English](../README.md) | [한국어](README.ko.md) | [日本語](README.ja.md)
 
 > 빌드에 필요한 것만 담으세요.
 
@@ -251,4 +251,4 @@ BuildPouch는 다음 작업을 수행하지 않습니다.
 
 ## 라이선스
 
-BuildPouch는 [Apache License 2.0](LICENSE)에 따라 배포됩니다.
+BuildPouch는 [Apache License 2.0](../LICENSE)에 따라 배포됩니다.
