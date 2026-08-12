@@ -77,7 +77,7 @@ BuildPouch는 allowlist 우선 방식을 사용합니다. 빌드에 필요한 �
 ```sh
 buildpouch inspect --config buildpouch.yaml
 buildpouch pack --config buildpouch.yaml
-buildpouch submit --config buildpouch.yaml
+buildpouch submit --config buildpouch.yaml --target gcp-development
 ```
 
 npm 패키지를 출시하기 전에는 프로젝트를 빌드한 뒤 명령을 로컬에서 실행할 수 있습니다.
@@ -96,12 +96,12 @@ node dist/cli.js submit --config buildpouch.yaml --archive customer-api.context.
 
 `pack`은 같은 검증을 다시 수행하고, 선택된 파일을 격리된 임시 디렉터리에 복사한 뒤 이식 가능한 gzip 압축 tar 아카이브를 만듭니다. 기본 출력은 현재 디렉터리의 `<context.name>.context.tar.gz`입니다. `--force`를 지정하지 않으면 기존 아카이브를 보존합니다. 명령 종료 후 staging 디렉터리를 확인해야 할 때만 `--keep-context`를 사용하세요.
 
-`submit`을 사용하려면 Google Cloud CLI가 설치되고 인증되어 있어야 합니다. `--archive`가 없으면 내부 임시 아카이브를 만들고 Cloud Build가 끝날 때까지 기다린 뒤 해당 아카이브를 제거합니다. `--archive`로 전달한 기존 아카이브는 절대 제거하지 않습니다. 최종 build ID, 상태, 소요 시간과 Cloud Console URL은 사람용 출력과 JSON 출력에서 모두 확인할 수 있습니다.
+`submit`은 `--target`으로 전달한 target, `defaultTarget`, 기존 `build` section 순서로 제출 대상을 선택합니다. 이름 있는 target이 하나뿐이면 자동으로 선택하며, 여러 개라면 `--target` 또는 `defaultTarget`이 필요합니다. Google Cloud Build target을 사용하려면 Google Cloud CLI가 설치되고 인증되어 있어야 합니다. `--archive`가 없으면 내부 임시 아카이브를 만들고 build가 끝날 때까지 기다린 뒤 해당 아카이브를 제거합니다. `--archive`로 전달한 기존 아카이브는 절대 제거하지 않습니다.
 
 한 번의 실행에 한해 프로바이더 값을 덮어쓸 수 있습니다.
 
 ```sh
-node dist/cli.js submit --config buildpouch.yaml \
+node dist/cli.js submit --config buildpouch.yaml --target gcp-development \
   --project another-project \
   --region us-central1 \
   --build-config ./cloudbuild.yaml \
@@ -132,20 +132,35 @@ context:
     - "**/.git/**"
     - "**/coverage/**"
 
-build:
-  provider: gcp-cloud-build
-  config: apps/customer/api/deploy/gcp/build.json
-  project: example-project
-  region: asia-northeast3
-  substitutions:
-    _APP_NAME: customer-api
+defaultTarget: gcp-development
+
+targets:
+  gcp-development:
+    provider: gcp-cloud-build
+    options:
+      config: apps/customer/api/deploy/gcp/build.json
+      project: example-project
+      region: asia-northeast3
+      substitutions:
+        _APP_NAME: customer-api
+
+  gcp-production:
+    provider: gcp-cloud-build
+    options:
+      config: apps/customer/api/deploy/gcp/build.json
+      project: production-project
+      region: asia-northeast3
+      substitutions:
+        _APP_NAME: customer-api
 ```
 
 Entry 목록은 source allowlist를 구성합니다. 각 entry는 `context.root` 아래의 파일, 디렉터리 또는 지원되는 glob을 아카이브 내부 경로에 대응시킵니다. Exclude는 allowlist의 범위를 줄이지만 그것만으로 컨텍스트를 정의하지는 않습니다.
 
 상대 `context.root` 값은 설정 파일이 있는 디렉터리를 기준으로 해석합니다. 각 entry의 source는 이 root를 기준으로 해석합니다. `required`의 기본값은 `true`이며, 필수 entry가 없거나 exclude 적용 후 비어 있으면 inspect가 실패합니다.
 
-상대 `build.config` 경로도 설정 파일이 있는 디렉터리를 기준으로 해석합니다. `--build-config` override는 현재 작업 디렉터리를 기준으로 해석합니다. 사용자 정의 Cloud Build substitution key는 `_`로 시작하고 대문자, 숫자와 underscore만 포함해야 합니다. Substitution 값은 명령 출력에 표시되므로 secret을 substitution으로 전달하지 말고 build configuration을 통해 Secret Manager를 사용하세요.
+이름 있는 target을 사용하면 공통 context 정의와 환경·프로바이더 선택을 분리할 수 있습니다. Target 이름에는 영문자, 숫자, 점, underscore와 hyphen을 사용할 수 있으며, 프로바이더별 값은 `targets.<name>.options` 아래에 둡니다. 하위 호환성을 위해 기존 단일 `build` section도 계속 지원하며, `--target`과 `defaultTarget`이 이름 있는 target을 선택하지 않으면 `build`가 우선됩니다.
+
+Google Cloud Build의 상대 `config` 경로는 설정 파일이 있는 디렉터리를 기준으로 해석합니다. `--build-config` override는 현재 작업 디렉터리를 기준으로 해석합니다. 사용자 정의 Cloud Build substitution key는 `_`로 시작하고 대문자, 숫자와 underscore만 포함해야 합니다. Substitution 값은 명령 출력에 표시되므로 secret을 substitution으로 전달하지 말고 build configuration을 통해 Secret Manager를 사용하세요.
 
 ## 설계 원칙
 

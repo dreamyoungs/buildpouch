@@ -33,6 +33,7 @@ export function formatSubmitPreparedHuman(prepared: PreparedSubmission): string 
     `Archive: ${prepared.archive.path}${prepared.archive.temporary ? " (temporary)" : ""}`,
     `Archive size: ${formatBytes(prepared.archive.size)}`,
     `Provider: ${prepared.provider.name}`,
+    ...(prepared.provider.target === undefined ? [] : [`Target: ${prepared.provider.target}`]),
     `Project: ${prepared.provider.project}`,
     `Region: ${prepared.provider.region}`,
     `Build config: ${prepared.provider.config}`,

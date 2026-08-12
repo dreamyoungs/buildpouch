@@ -8,15 +8,16 @@ import { formatSubmitJson, formatSubmitPreparedHuman, formatSubmitResultHuman } 
 import { submitContext } from "../submit.js";
 
 export const submitHelpText = `Usage:
-  buildpouch submit [--config <path>] [--archive <path>] [provider overrides] [--json]
+  buildpouch submit [--config <path>] [--target <name>] [--archive <path>] [provider overrides] [--json]
 
 Options:
   --config <path>           Configuration file (default: buildpouch.yaml).
+  --target <name>           Select a named build target.
   --archive <path>          Submit an existing archive instead of packing context.
-  --project <id>            Override build.project.
-  --region <region>         Override build.region.
-  --build-config <path>     Override build.config (resolved from the current directory).
-  --substitution <key=value> Override one substitution; repeat for multiple values.
+  --project <id>            Override the selected GCP project.
+  --region <region>         Override the selected GCP region.
+  --build-config <path>     Override the selected GCP config path.
+  --substitution <key=value> Override one GCP substitution; repeat for multiple values.
   --json                    Print a machine-readable submit result.
   -h, --help                Show this help message.
 `;
@@ -27,6 +28,7 @@ interface SubmitCommandOptions {
   "json": boolean;
   "substitutions": Record<string, string>;
   "archive"?: string;
+  "target"?: string;
   "project"?: string;
   "region"?: string;
   "buildConfig"?: string;
@@ -53,10 +55,11 @@ function parseSubmitOptions(args: string[]): SubmitCommandOptions {
 
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
-    if (["--config", "--archive", "--project", "--region", "--build-config", "--substitution"].includes(argument ?? "")) {
+    if (["--config", "--target", "--archive", "--project", "--region", "--build-config", "--substitution"].includes(argument ?? "")) {
       const value = readValue(args, index, argument ?? "");
       index += 1;
       if (argument === "--config") options.config = value;
+      else if (argument === "--target") options.target = value;
       else if (argument === "--archive") options.archive = value;
       else if (argument === "--project") options.project = value;
       else if (argument === "--region") options.region = value;
@@ -98,6 +101,7 @@ export async function runSubmit(args: string[]): Promise<number> {
       "onProviderStderr": (chunk) => process.stderr.write(chunk),
       ...(options.json ? {} : { "onPrepared": (prepared) => process.stdout.write(formatSubmitPreparedHuman(prepared)) }),
       ...(options.archive === undefined ? {} : { "archive": options.archive }),
+      ...(options.target === undefined ? {} : { "target": options.target }),
       ...(options.project === undefined ? {} : { "project": options.project }),
       ...(options.region === undefined ? {} : { "region": options.region }),
       ...(options.buildConfig === undefined ? {} : { "buildConfig": options.buildConfig })

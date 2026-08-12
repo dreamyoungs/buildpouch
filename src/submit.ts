@@ -14,7 +14,7 @@ import { chmod, mkdtemp, realpath, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 
-import type { LoadedConfig } from "./config/types.js";
+import type { GcpCloudBuildOptions, LoadedConfig } from "./config/types.js";
 import { packContext } from "./context/pack.js";
 import { BuildPouchError } from "./errors.js";
 import { createGcpCloudBuildProvider } from "./providers/gcp-cloud-build.js";
@@ -35,6 +35,7 @@ export interface PreparedSubmission {
   };
   "provider": {
     "name": "gcp-cloud-build";
+    "target"?: string;
     "project": string;
     "region": string;
     "config": string;
@@ -53,11 +54,47 @@ export interface SubmitOptions {
   "project"?: string;
   "region"?: string;
   "buildConfig"?: string;
+  "target"?: string;
   "substitutions": Record<string, string>;
   "signal"?: AbortSignal;
   "onPrepared"?: (submission: PreparedSubmission) => void;
   "onProviderStderr"?: (chunk: string) => void;
   "provider"?: BuildProvider;
+}
+
+interface SelectedBuild {
+  "options": GcpCloudBuildOptions;
+  "target"?: string;
+}
+
+function selectBuild(loaded: LoadedConfig, requestedTarget?: string): SelectedBuild {
+  if (requestedTarget !== undefined) {
+    const target = loaded.config.targets[requestedTarget];
+    if (target === undefined) {
+      throw new BuildPouchError("PROVIDER_TARGET_NOT_FOUND", `Unknown build target: ${requestedTarget}.`);
+    }
+    return { "options": target.options, "target": requestedTarget };
+  }
+
+  if (loaded.config.defaultTarget !== undefined) {
+    const name = loaded.config.defaultTarget;
+    return { "options": loaded.config.targets[name]!.options, "target": name };
+  }
+
+  if (loaded.config.build !== undefined) {
+    return { "options": loaded.config.build };
+  }
+
+  const targets = Object.entries(loaded.config.targets);
+  if (targets.length === 1) {
+    const [name, target] = targets[0]!;
+    return { "options": target.options, "target": name };
+  }
+  if (targets.length > 1) {
+    throw new BuildPouchError("PROVIDER_TARGET_REQUIRED", "submit requires --target or defaultTarget when multiple build targets are configured.");
+  }
+
+  throw new BuildPouchError("PROVIDER_NOT_CONFIGURED", "submit requires a build section or at least one named target in the configuration file.");
 }
 
 async function regularFile(path: string, label: string): Promise<{ "path": string; "size": number }> {
@@ -108,10 +145,8 @@ async function createSubmissionDirectory(): Promise<string> {
 }
 
 export async function submitContext(loaded: LoadedConfig, options: SubmitOptions): Promise<SubmitResult> {
-  const configuredBuild = loaded.config.build;
-  if (configuredBuild === undefined) {
-    throw new BuildPouchError("PROVIDER_NOT_CONFIGURED", "submit requires a build section in the configuration file.");
-  }
+  const selectedBuild = selectBuild(loaded, options.target);
+  const configuredBuild = selectedBuild.options;
 
   const project = options.project ?? configuredBuild.project;
   const region = options.region ?? configuredBuild.region;
@@ -131,6 +166,7 @@ export async function submitContext(loaded: LoadedConfig, options: SubmitOptions
         "archive": { ...archive, "temporary": false },
         "provider": {
           "name": "gcp-cloud-build",
+          ...(selectedBuild.target === undefined ? {} : { "target": selectedBuild.target }),
           project,
           region,
           "config": buildConfig.path,
@@ -150,6 +186,7 @@ export async function submitContext(loaded: LoadedConfig, options: SubmitOptions
         "archive": { ...packed.archive, "temporary": true },
         "provider": {
           "name": "gcp-cloud-build",
+          ...(selectedBuild.target === undefined ? {} : { "target": selectedBuild.target }),
           project,
           region,
           "config": buildConfig.path,
