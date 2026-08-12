@@ -8,7 +8,20 @@ BuildPouch is a CLI project for creating safe, minimal build context archives fr
 
 ## Project status
 
-BuildPouch is in pre-development. The command interface and configuration shown below are proposals and may change. No working CLI or npm package has been released yet.
+BuildPouch is in early development. The TypeScript CLI scaffold supports `--help` and `--version`; the commands and configuration shown below remain proposals and may change. No npm package has been released yet.
+
+## Local development
+
+BuildPouch currently requires Node.js 24 and npm 11.12.1.
+
+```sh
+npm install
+npm run check
+npm test
+npm pack --dry-run
+```
+
+After building, run the local CLI with `node dist/cli.js --help`.
 
 ## Why BuildPouch?
 
@@ -133,7 +146,7 @@ Repository-owned tasks may prepare compiled output or a pruned dependency tree b
 
 ## Contributing
 
-The project is being designed in public. Until the initial implementation is scaffolded, please use [GitHub Issues](https://github.com/dreamyoungs/buildpouch/issues) for questions and proposals.
+The project is being designed in public. Please use [GitHub Issues](https://github.com/dreamyoungs/buildpouch/issues) for questions and proposals before opening a substantial pull request.
 
 ## License
 

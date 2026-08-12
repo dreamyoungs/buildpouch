@@ -1,0 +1,46 @@
+{
+  "name": "buildpouch",
+  "version": "0.0.0-development",
+  "description": "Pack only what your build needs — create safe, minimal build contexts for monorepos and submit them to build providers.",
+  "keywords": [
+    "build-context",
+    "cli",
+    "cloud-build",
+    "monorepo",
+    "tar"
+  ],
+  "homepage": "https://github.com/dreamyoungs/buildpouch#readme",
+  "bugs": {
+    "url": "https://github.com/dreamyoungs/buildpouch/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dreamyoungs/buildpouch.git"
+  },
+  "license": "Apache-2.0",
+  "author": "Dreamyoungs",
+  "type": "module",
+  "bin": {
+    "buildpouch": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "npm@11.12.1",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit && node --check test/cli.test.js",
+    "test": "npm run build && node --test",
+    "prepack": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "typescript": "7.0.2"
+  }
+}
