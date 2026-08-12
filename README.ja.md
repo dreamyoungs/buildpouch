@@ -8,7 +8,7 @@ BuildPouchは、モノレポから安全で最小限のビルドコンテキス�
 
 ## プロジェクトの状況
 
-BuildPouchは初期開発段階にあります。ソースから`inspect`と`pack`コマンドを利用でき、`submit`は今後実装する予定です。公開インターフェースは変更される可能性があり、npmパッケージはまだリリースされていません。
+BuildPouchは初期開発段階にあります。ソースから`inspect`、`pack`、`submit`のMVPコマンドを利用できます。公開インターフェースは変更される可能性があり、npmパッケージはまだリリースされていません。
 
 ## ローカル開発
 
@@ -60,9 +60,9 @@ BuildPouchは許可リストを優先する方式を採用します。ビルド�
 | --- | --- | --- |
 | `buildpouch inspect` | ソースから利用可能 | ファイルをコピーしたりクラウドプロバイダーへ接続したりせず、コンテキストを算出して検証します。 |
 | `buildpouch pack` | ソースから利用可能 | 検証済みのファイルを一時ディレクトリに配置し、`tar.gz`アーカイブを作成します。 |
-| `buildpouch submit` | 実装予定 | コンテキストをパッケージ化するか既存のアーカイブを受け取り、設定されたプロバイダーを通じて送信します。 |
+| `buildpouch submit` | ソースから利用可能 | コンテキストをパッケージ化するか既存のアーカイブを受け取り、設定されたプロバイダーを通じて送信します。 |
 
-最初に対応予定のプロバイダーは、既存の`gcloud` CLIを通じて呼び出すGoogle Cloud Buildです。`build.json`や`cloudbuild.yaml`などのプロバイダー固有のビルド設定は、BuildPouchを利用するリポジトリが引き続き所有します。
+最初のプロバイダーは、既存の`gcloud` CLIを通じて呼び出すGoogle Cloud Buildです。`build.json`や`cloudbuild.yaml`などのプロバイダー固有のビルド設定は、BuildPouchを利用するリポジトリが引き続き所有します。
 
 コマンド形式:
 
@@ -80,11 +80,25 @@ node dist/cli.js inspect --config buildpouch.yaml
 node dist/cli.js inspect --config buildpouch.yaml --json
 node dist/cli.js pack --config buildpouch.yaml
 node dist/cli.js pack --config buildpouch.yaml --output customer-api.context.tar.gz --json
+node dist/cli.js submit --config buildpouch.yaml
+node dist/cli.js submit --config buildpouch.yaml --archive customer-api.context.tar.gz --json
 ```
 
 `inspect`はmetadataだけを読み取ります。ファイルをステージングしたりプロバイダーへ接続したりせず、すべてのsource→target mapping、各ファイルサイズ、ファイル数、合計サイズを表示します。
 
 `pack`は同じ検証を再度行い、選択されたファイルを分離された一時ディレクトリにコピーして、ポータブルなgzip圧縮tarアーカイブを作成します。デフォルトの出力先は、現在のディレクトリにある`<context.name>.context.tar.gz`です。`--force`を指定しない限り既存のアーカイブは保持されます。コマンド終了後にステージングディレクトリを確認する必要がある場合のみ、`--keep-context`を使用してください。
+
+`submit`を使用するには、Google Cloud CLIがインストールされ、認証済みである必要があります。`--archive`がない場合は内部の一時アーカイブを作成し、Cloud Buildの完了を待ってからそのアーカイブを削除します。`--archive`で渡した既存のアーカイブは削除しません。最終的なbuild ID、ステータス、所要時間、Cloud Console URLは、人向け出力とJSON出力の両方で確認できます。
+
+1回の実行に限り、プロバイダーの値を上書きできます。
+
+```sh
+node dist/cli.js submit --config buildpouch.yaml \
+  --project another-project \
+  --region us-central1 \
+  --build-config ./cloudbuild.yaml \
+  --substitution _APP_NAME=customer-api
+```
 
 ## 設定
 
@@ -123,6 +137,8 @@ build:
 
 相対的な`context.root`は設定ファイルのディレクトリを基準に解決されます。各エントリーのsourceは、このrootを基準に解決されます。`required`のデフォルト値は`true`で、必須エントリーが存在しない場合や除外後に空になる場合はinspectが失敗します。
 
+相対的な`build.config`パスも設定ファイルのディレクトリを基準に解決されます。`--build-config`の上書きは現在の作業ディレクトリを基準に解決されます。ユーザー定義のCloud Build substitution keyは`_`で始まり、大文字、数字、underscoreのみを含める必要があります。Substitutionの値はコマンド出力に表示されるため、secretをsubstitutionとして渡さず、build configurationを通じてSecret Managerを使用してください。
+
 ## 設計原則
 
 - **許可リストを優先:** 明示的に選択されたビルド入力だけを含めます。
@@ -133,7 +149,7 @@ build:
 
 ## セキュリティ境界
 
-現在の`inspect`と`pack`コマンドは、以下の動作を行います。
+現在のコマンドは、以下の動作を行います。
 
 - 設定されたルート外を参照するソースパスを拒否します。
 - 絶対パスやパストラバーサルを含むアーカイブのターゲットを拒否します。
@@ -144,6 +160,11 @@ build:
 - 最終パスに確定する前に、同じディレクトリ内の一意な一時ファイルへアーカイブを書き込みます。
 - `--force`を明示しない限り、既存のアーカイブの上書きを拒否します。
 - `--keep-context`を明示した場合を除き、成功、失敗、キャンセルの後にステージングと不完全なアーカイブを削除します。
+- shellを使わず、argument arrayで`gcloud`を実行します。
+- cloud credentialを読み取ったり保存したりせず、現在の`gcloud` identityを使用します。
+- `submit`が内部で作成したアーカイブだけを削除し、ユーザーが渡したアーカイブは保持します。
+
+`submit`をキャンセルすると、ローカルの`gcloud` processを停止し、一時ファイルを削除します。Cloud Buildがすでに受け付けたリモートbuildまでキャンセルされることは保証しません。
 
 パスに基づくブロックは、ファイル内容を解析するシークレットスキャナーではありません。ファイル内容の検査が必要な場合は、CIで専用のセキュリティツールを使用してください。
 

@@ -2,7 +2,7 @@
  * `buildpouch.yaml`을 읽어 공개 설정 계약에 맞는 값만 반환한다.
  *
  * 호출 관계:
- * - 진입: `inspect`, `pack` 명령
+ * - 진입: `inspect`, `pack`, `submit` 명령
  * - 협력: `yaml` parser와 `src/config/types.ts`
  *
  * 데이터·부수효과:
