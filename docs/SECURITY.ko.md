@@ -1,6 +1,6 @@
 # 보안 정책
 
-[프로젝트 README](../README.md) | [English](SECURITY.md) | [한국어](SECURITY.ko.md) | [日本語](SECURITY.ja.md)
+[프로젝트 README](../README.md) | [English](../.github/SECURITY.md) | [한국어](SECURITY.ko.md) | [日本語](SECURITY.ja.md)
 
 ## 지원 버전
 

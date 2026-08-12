@@ -1,6 +1,6 @@
 # 행동 강령
 
-[프로젝트 README](../README.md) | [English](CODE_OF_CONDUCT.md) | [한국어](CODE_OF_CONDUCT.ko.md) | [日本語](CODE_OF_CONDUCT.ja.md)
+[프로젝트 README](../README.md) | [English](../.github/CODE_OF_CONDUCT.md) | [한국어](CODE_OF_CONDUCT.ko.md) | [日本語](CODE_OF_CONDUCT.ja.md)
 
 ## 우리의 약속
 
