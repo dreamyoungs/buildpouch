@@ -183,7 +183,9 @@ BuildPouch는 다음 작업을 수행하지 않습니다.
 
 ## 기여
 
-이 프로젝트는 공개적으로 설계하고 있습니다. 큰 규모의 Pull Request를 열기 전에 질문과 제안은 [GitHub Issues](https://github.com/dreamyoungs/buildpouch/issues)를 이용해 주세요.
+이 프로젝트는 공개적으로 설계하고 있습니다. [기여 가이드](CONTRIBUTING.ko.md)와 [행동 강령](CODE_OF_CONDUCT.ko.md)을 읽고, 큰 규모의 Pull Request를 열기 전에 질문과 제안은 [GitHub Issues](https://github.com/dreamyoungs/buildpouch/issues)를 이용해 주세요. 취약점은 공개 issue가 아닌 [보안 정책](SECURITY.ko.md)의 절차로 신고해 주세요.
+
+주요 변경 사항은 [변경 기록](CHANGELOG.md)에서 관리합니다.
 
 ## 라이선스
 

@@ -1,0 +1,48 @@
+name: Bug report
+description: Report a reproducible problem in BuildPouch.
+title: "bug: "
+body:
+  - type: markdown
+    attributes:
+      value: Do not include credentials, secrets, or private source code. Report security vulnerabilities through the security policy instead.
+  - type: input
+    id: version
+    attributes:
+      label: BuildPouch version
+      description: Paste the output of `buildpouch --version` or the commit SHA.
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What went wrong?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Provide sanitized configuration, commands, and the smallest safe fixture that reproduces the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include the complete sanitized error and exit code.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, Node.js version, npm version, and gcloud version when relevant.
+    validations:
+      required: true
