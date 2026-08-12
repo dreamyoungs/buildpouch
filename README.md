@@ -8,7 +8,23 @@ BuildPouch is a CLI project for creating safe, minimal build context archives fr
 
 ## Project status
 
-BuildPouch is in early development. The `inspect`, `pack`, and `submit` MVP commands are available from source. The public interface may change, and no npm package has been released yet.
+BuildPouch 0.1.0 is the first public npm release. The `inspect`, `pack`, and `submit` MVP commands are available. The public interface may change during the 0.x release line.
+
+## Installation
+
+BuildPouch requires Node.js 24 or later. Install it in a project and run it with `npx`:
+
+```sh
+npm install --save-dev buildpouch
+npx buildpouch --help
+```
+
+For interactive use across projects, it can also be installed globally:
+
+```sh
+npm install --global buildpouch
+buildpouch --help
+```
 
 ## AI-assisted development
 
@@ -66,11 +82,11 @@ Context creation and provider submission remain separate stages so that failures
 
 | Command | Status | Responsibility |
 | --- | --- | --- |
-| `buildpouch inspect` | Available from source | Calculate and validate the context without copying files or contacting a cloud provider. |
-| `buildpouch pack` | Available from source | Stage the validated files in a temporary directory and create a `tar.gz` archive. |
-| `buildpouch submit` | Available from source | Pack a context, or accept an existing archive, and submit it through the configured provider. |
+| `buildpouch inspect` | Available | Calculate and validate the context without copying files or contacting a cloud provider. |
+| `buildpouch pack` | Available | Stage the validated files in a temporary directory and create a `tar.gz` archive. |
+| `buildpouch submit` | Available | Pack a context, or accept an existing archive, and submit it through the configured provider. |
 
-Supported providers are Google Cloud Build through the existing `gcloud` CLI and NCP NKS BuildKit through the existing `aws` and `kubectl` CLIs. Provider-specific build configuration, Kubernetes Job templates, and deployment behavior remain owned by the repository using BuildPouch.
+Supported providers are Google Cloud Build through the existing `gcloud` CLI and NCP NKS BuildKit through the existing `aws` and `kubectl` CLIs. Provider-specific build configuration, Kubernetes Job templates, and deployment behavior remain owned by the repository using BuildPouch. NCP support is experimental until it completes live end-to-end validation against NCP Object Storage, NKS, and Container Registry.
 
 Command shape:
 
@@ -80,16 +96,15 @@ buildpouch pack --config buildpouch.yaml
 buildpouch submit --config buildpouch.yaml --target gcp-development
 ```
 
-Until the npm package is released, build the project and run the commands locally:
+After installing BuildPouch in a project, run commands through `npx`:
 
 ```sh
-npm run build
-node dist/cli.js inspect --config buildpouch.yaml
-node dist/cli.js inspect --config buildpouch.yaml --json
-node dist/cli.js pack --config buildpouch.yaml
-node dist/cli.js pack --config buildpouch.yaml --output customer-api.context.tar.gz --json
-node dist/cli.js submit --config buildpouch.yaml
-node dist/cli.js submit --config buildpouch.yaml --archive customer-api.context.tar.gz --json
+npx buildpouch inspect --config buildpouch.yaml
+npx buildpouch inspect --config buildpouch.yaml --json
+npx buildpouch pack --config buildpouch.yaml
+npx buildpouch pack --config buildpouch.yaml --output customer-api.context.tar.gz --json
+npx buildpouch submit --config buildpouch.yaml
+npx buildpouch submit --config buildpouch.yaml --archive customer-api.context.tar.gz --json
 ```
 
 `inspect` reads metadata only. It reports every source-to-target mapping, individual file size, file count, and total size without staging files or contacting a provider.

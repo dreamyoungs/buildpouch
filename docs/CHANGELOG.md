@@ -2,9 +2,11 @@
 
 [Project README](../README.md)
 
-All notable changes to BuildPouch will be documented in this file. The project intends to follow [Semantic Versioning](https://semver.org/) after its first public release.
+All notable changes to BuildPouch will be documented in this file. The project follows [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## [Unreleased]
+
+## [0.1.0] - 2026-08-12
 
 ### Added
 
@@ -16,3 +18,11 @@ All notable changes to BuildPouch will be documented in this file. The project i
 - Named build targets with `defaultTarget` and `submit --target`, while retaining the legacy single `build` configuration.
 - NCP archive-first submission through Object Storage and repository-owned BuildKit Jobs on NKS.
 - English, Korean, and Japanese project documentation.
+
+### Notes
+
+- Google Cloud Build submission has been exercised in a real project.
+- NCP NKS BuildKit submission remains experimental until live end-to-end validation is complete.
+
+[Unreleased]: https://github.com/dreamyoungs/buildpouch/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/dreamyoungs/buildpouch/releases/tag/v0.1.0

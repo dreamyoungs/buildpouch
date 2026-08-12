@@ -4,7 +4,7 @@
 
 ## サポート対象のバージョン
 
-BuildPouchはまだnpm releaseを公開していません。最初のreleaseまでは、`main`の最新commitを対象にセキュリティ修正を行います。非公式archive、fork、変更されたbuildはこのポリシーのサポート対象外です。
+セキュリティ修正は、最新の0.1.x releaseを対象とします。`main` branchには、まだreleaseされていない修正が含まれる場合があります。非公式archive、fork、変更されたbuildはこのポリシーのサポート対象外です。
 
 ## 脆弱性の報告
 

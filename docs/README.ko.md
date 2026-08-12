@@ -8,7 +8,23 @@ BuildPouch는 모노레포에서 안전하고 최소화된 빌드 컨텍스트 �
 
 ## 프로젝트 상태
 
-BuildPouch는 초기 개발 단계에 있습니다. 소스에서 `inspect`, `pack`, `submit` MVP 명령을 사용할 수 있습니다. 공개 인터페이스는 변경될 수 있고 npm 패키지는 아직 출시되지 않았습니다.
+BuildPouch 0.1.0은 첫 번째 공개 npm release입니다. `inspect`, `pack`, `submit` MVP 명령을 사용할 수 있습니다. 0.x release 동안 공개 interface가 변경될 수 있습니다.
+
+## 설치
+
+BuildPouch에는 Node.js 24 이상이 필요합니다. 프로젝트에 설치한 뒤 `npx`로 실행합니다.
+
+```sh
+npm install --save-dev buildpouch
+npx buildpouch --help
+```
+
+여러 프로젝트에서 대화형으로 사용하려면 global로 설치할 수도 있습니다.
+
+```sh
+npm install --global buildpouch
+buildpouch --help
+```
 
 ## AI를 활용한 개발
 
@@ -66,11 +82,11 @@ BuildPouch는 allowlist 우선 방식을 사용합니다. 빌드에 필요한 �
 
 | 명령 | 상태 | 책임 |
 | --- | --- | --- |
-| `buildpouch inspect` | 소스에서 사용 가능 | 파일을 복사하거나 클라우드 프로바이더에 연결하지 않고 컨텍스트를 계산하고 검증합니다. |
-| `buildpouch pack` | 소스에서 사용 가능 | 검증된 파일을 임시 디렉터리에 구성하고 `tar.gz` 아카이브를 만듭니다. |
-| `buildpouch submit` | 소스에서 사용 가능 | 컨텍스트를 패키징하거나 기존 아카이브를 받아 설정된 프로바이더를 통해 제출합니다. |
+| `buildpouch inspect` | 사용 가능 | 파일을 복사하거나 클라우드 프로바이더에 연결하지 않고 컨텍스트를 계산하고 검증합니다. |
+| `buildpouch pack` | 사용 가능 | 검증된 파일을 임시 디렉터리에 구성하고 `tar.gz` 아카이브를 만듭니다. |
+| `buildpouch submit` | 사용 가능 | 컨텍스트를 패키징하거나 기존 아카이브를 받아 설정된 프로바이더를 통해 제출합니다. |
 
-Google Cloud Build는 기존 `gcloud` CLI를 통해, NCP NKS BuildKit은 기존 `aws`와 `kubectl` CLI를 통해 지원합니다. 프로바이더별 빌드 설정, Kubernetes Job template과 배포 동작은 BuildPouch를 사용하는 저장소가 계속 소유합니다.
+Google Cloud Build는 기존 `gcloud` CLI를 통해, NCP NKS BuildKit은 기존 `aws`와 `kubectl` CLI를 통해 지원합니다. 프로바이더별 빌드 설정, Kubernetes Job template과 배포 동작은 BuildPouch를 사용하는 저장소가 계속 소유합니다. NCP 지원은 NCP Object Storage, NKS와 Container Registry를 연결한 실제 end-to-end 검증을 마칠 때까지 experimental입니다.
 
 명령 형태:
 
@@ -80,16 +96,15 @@ buildpouch pack --config buildpouch.yaml
 buildpouch submit --config buildpouch.yaml --target gcp-development
 ```
 
-npm 패키지를 출시하기 전에는 프로젝트를 빌드한 뒤 명령을 로컬에서 실행할 수 있습니다.
+프로젝트에 BuildPouch를 설치한 뒤 `npx`로 명령을 실행합니다.
 
 ```sh
-npm run build
-node dist/cli.js inspect --config buildpouch.yaml
-node dist/cli.js inspect --config buildpouch.yaml --json
-node dist/cli.js pack --config buildpouch.yaml
-node dist/cli.js pack --config buildpouch.yaml --output customer-api.context.tar.gz --json
-node dist/cli.js submit --config buildpouch.yaml
-node dist/cli.js submit --config buildpouch.yaml --archive customer-api.context.tar.gz --json
+npx buildpouch inspect --config buildpouch.yaml
+npx buildpouch inspect --config buildpouch.yaml --json
+npx buildpouch pack --config buildpouch.yaml
+npx buildpouch pack --config buildpouch.yaml --output customer-api.context.tar.gz --json
+npx buildpouch submit --config buildpouch.yaml
+npx buildpouch submit --config buildpouch.yaml --archive customer-api.context.tar.gz --json
 ```
 
 `inspect`는 metadata만 읽습니다. 파일을 staging하거나 프로바이더에 연결하지 않고 모든 source→target mapping, 개별 파일 크기, 파일 수와 전체 크기를 표시합니다.

@@ -1,6 +1,6 @@
 {
   "name": "buildpouch",
-  "version": "0.0.0-development",
+  "version": "0.1.0",
   "description": "Pack only what your build needs — create safe, minimal build contexts for monorepos and submit them to build providers.",
   "keywords": [
     "build-context",
@@ -24,7 +24,7 @@
   "author": "Dreamyoungs",
   "type": "module",
   "bin": {
-    "buildpouch": "./dist/cli.js"
+    "buildpouch": "dist/cli.js"
   },
   "files": [
     "dist"
