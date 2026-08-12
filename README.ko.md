@@ -10,8 +10,6 @@ BuildPouch는 모노레포에서 안전하고 최소화된 빌드 컨텍스트 �
 
 BuildPouch는 개발 전 단계에 있습니다. 아래의 명령 인터페이스와 설정은 제안이며 변경될 수 있습니다. 아직 동작하는 CLI나 npm 패키지는 출시되지 않았습니다.
 
-이 저장소에는 아직 오픈소스 라이선스가 없습니다. 첫 릴리스 전에 라이선스를 추가할 예정입니다.
-
 ## BuildPouch가 필요한 이유
 
 모노레포 안의 애플리케이션은 자체 디렉터리 밖에 있는 파일을 필요로 할 수 있습니다. 공용 패키지, 루트 manifest, lockfile, 생성된 client, 빌드 설정, 정적 자산 등이 그 예입니다.
@@ -136,3 +134,7 @@ BuildPouch는 다음 작업을 수행하지 않습니다.
 ## 기여
 
 이 프로젝트는 공개적으로 설계하고 있습니다. 초기 구현의 골격이 마련되기 전까지 질문과 제안은 [GitHub Issues](https://github.com/dreamyoungs/buildpouch/issues)를 이용해 주세요.
+
+## 라이선스
+
+BuildPouch는 [Apache License 2.0](LICENSE)에 따라 배포됩니다.
