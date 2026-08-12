@@ -8,7 +8,7 @@ BuildPouch는 모노레포에서 안전하고 최소화된 빌드 컨텍스트 �
 
 ## 프로젝트 상태
 
-BuildPouch는 초기 개발 단계에 있습니다. 소스에서 `inspect` 명령을 사용할 수 있으며, `pack`과 `submit`은 아직 구현 예정입니다. 공개 인터페이스는 변경될 수 있고 npm 패키지는 아직 출시되지 않았습니다.
+BuildPouch는 초기 개발 단계에 있습니다. 소스에서 `inspect`와 `pack` 명령을 사용할 수 있으며, `submit`은 아직 구현 예정입니다. 공개 인터페이스는 변경될 수 있고 npm 패키지는 아직 출시되지 않았습니다.
 
 ## 로컬 개발
 
@@ -31,7 +31,7 @@ npm pack --dry-run
 
 BuildPouch는 allowlist 우선 방식을 사용합니다. 빌드에 필요한 파일을 명시적으로 선택하고, 아카이브 안에서 배치될 경로를 검증한 뒤, 선택된 컨텍스트만 패키징합니다.
 
-## 예정된 작업 흐름
+## 작업 흐름
 
 ```text
 설정과 CLI 인자
@@ -59,7 +59,7 @@ BuildPouch는 allowlist 우선 방식을 사용합니다. 빌드에 필요한 �
 | 명령 | 상태 | 책임 |
 | --- | --- | --- |
 | `buildpouch inspect` | 소스에서 사용 가능 | 파일을 복사하거나 클라우드 프로바이더에 연결하지 않고 컨텍스트를 계산하고 검증합니다. |
-| `buildpouch pack` | 구현 예정 | 검증된 파일을 임시 디렉터리에 구성하고 `tar.gz` 아카이브를 만듭니다. |
+| `buildpouch pack` | 소스에서 사용 가능 | 검증된 파일을 임시 디렉터리에 구성하고 `tar.gz` 아카이브를 만듭니다. |
 | `buildpouch submit` | 구현 예정 | 컨텍스트를 패키징하거나 기존 아카이브를 받아 설정된 프로바이더를 통해 제출합니다. |
 
 첫 번째 예정 프로바이더는 기존 `gcloud` CLI를 통해 호출하는 Google Cloud Build입니다. `build.json`이나 `cloudbuild.yaml` 같은 프로바이더별 빌드 설정은 BuildPouch를 사용하는 저장소가 계속 소유합니다.
@@ -72,15 +72,19 @@ buildpouch pack --config buildpouch.yaml
 buildpouch submit --config buildpouch.yaml
 ```
 
-npm 패키지를 출시하기 전에는 프로젝트를 빌드한 뒤 `inspect`를 로컬에서 실행할 수 있습니다.
+npm 패키지를 출시하기 전에는 프로젝트를 빌드한 뒤 명령을 로컬에서 실행할 수 있습니다.
 
 ```sh
 npm run build
 node dist/cli.js inspect --config buildpouch.yaml
 node dist/cli.js inspect --config buildpouch.yaml --json
+node dist/cli.js pack --config buildpouch.yaml
+node dist/cli.js pack --config buildpouch.yaml --output customer-api.context.tar.gz --json
 ```
 
 `inspect`는 metadata만 읽습니다. 파일을 staging하거나 프로바이더에 연결하지 않고 모든 source→target mapping, 개별 파일 크기, 파일 수와 전체 크기를 표시합니다.
+
+`pack`은 같은 검증을 다시 수행하고, 선택된 파일을 격리된 임시 디렉터리에 복사한 뒤 이식 가능한 gzip 압축 tar 아카이브를 만듭니다. 기본 출력은 현재 디렉터리의 `<context.name>.context.tar.gz`입니다. `--force`를 지정하지 않으면 기존 아카이브를 보존합니다. 명령 종료 후 staging 디렉터리를 확인해야 할 때만 `--keep-context`를 사용하세요.
 
 ## 설정
 
@@ -129,15 +133,17 @@ Entry 목록은 source allowlist를 구성합니다. 각 entry는 `context.root`
 
 ## 보안 경계
 
-현재 `inspect` 명령은 다음 동작을 수행합니다.
+현재 `inspect`와 `pack` 명령은 다음 동작을 수행합니다.
 
 - 설정된 root 밖으로 나가는 source 경로를 거부합니다.
 - 절대 경로 또는 상위 경로 이동을 포함한 archive target을 거부합니다.
 - 기본적으로 source symlink를 따라가지 않습니다.
 - 대소문자를 구분하지 않는 filesystem에서 발생하는 경우를 포함해 target 충돌을 감지합니다.
 - 일반적인 secret 파일, credential 디렉터리, private key, local cache와 임시 파일을 차단합니다.
-- source workspace 밖에 현재 사용자만 접근할 수 있는 임시 디렉터리를 사용합니다.
-- 성공, 실패 또는 취소 후 임시 산출물을 정리합니다.
+- source workspace 밖에 현재 사용자만 접근할 수 있는 staging 디렉터리를 만듭니다.
+- 최종 경로에 확정하기 전에 고유한 같은 디렉터리의 임시 파일에 아카이브를 씁니다.
+- `--force`를 명시하지 않으면 기존 아카이브 덮어쓰기를 거부합니다.
+- `--keep-context`를 명시한 경우를 제외하고 성공, 실패 또는 취소 후 staging과 부분 아카이브를 정리합니다.
 
 경로 기반 차단은 파일 내용을 분석하는 secret scanner가 아닙니다. 파일 내용 검사가 필요하면 CI에서 전용 보안 도구를 사용해야 합니다.
 

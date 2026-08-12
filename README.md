@@ -8,7 +8,7 @@ BuildPouch is a CLI project for creating safe, minimal build context archives fr
 
 ## Project status
 
-BuildPouch is in early development. The `inspect` command is available from source; `pack` and `submit` remain planned. The public interface may change, and no npm package has been released yet.
+BuildPouch is in early development. The `inspect` and `pack` commands are available from source; `submit` remains planned. The public interface may change, and no npm package has been released yet.
 
 ## Local development
 
@@ -31,7 +31,7 @@ Using only the application directory as a build context can omit required files.
 
 BuildPouch takes an allowlist-first approach: explicitly select the files a build needs, validate where they will appear in the archive, and package only that context.
 
-## Planned workflow
+## Workflow
 
 ```text
 Configuration and CLI arguments
@@ -59,7 +59,7 @@ Context creation and provider submission remain separate stages so that failures
 | Command | Status | Responsibility |
 | --- | --- | --- |
 | `buildpouch inspect` | Available from source | Calculate and validate the context without copying files or contacting a cloud provider. |
-| `buildpouch pack` | Planned | Stage the validated files in a temporary directory and create a `tar.gz` archive. |
+| `buildpouch pack` | Available from source | Stage the validated files in a temporary directory and create a `tar.gz` archive. |
 | `buildpouch submit` | Planned | Pack a context, or accept an existing archive, and submit it through the configured provider. |
 
 The first planned provider is Google Cloud Build, invoked through the existing `gcloud` CLI. Provider-specific build configuration such as `build.json` or `cloudbuild.yaml` remains owned by the repository using BuildPouch.
@@ -72,15 +72,19 @@ buildpouch pack --config buildpouch.yaml
 buildpouch submit --config buildpouch.yaml
 ```
 
-Until the npm package is released, build the project and run `inspect` locally:
+Until the npm package is released, build the project and run the commands locally:
 
 ```sh
 npm run build
 node dist/cli.js inspect --config buildpouch.yaml
 node dist/cli.js inspect --config buildpouch.yaml --json
+node dist/cli.js pack --config buildpouch.yaml
+node dist/cli.js pack --config buildpouch.yaml --output customer-api.context.tar.gz --json
 ```
 
 `inspect` reads metadata only. It reports every source-to-target mapping, individual file size, file count, and total size without staging files or contacting a provider.
+
+`pack` repeats the same validation, copies the selected files into an isolated temporary directory, and writes a portable gzip-compressed tar archive. The default output is `<context.name>.context.tar.gz` in the current directory. Existing archives are preserved unless `--force` is supplied. Use `--keep-context` only when you need to inspect the staging directory after the command finishes.
 
 ## Configuration
 
@@ -129,15 +133,17 @@ Relative `context.root` values are resolved from the configuration file director
 
 ## Security boundaries
 
-The current `inspect` command:
+The current `inspect` and `pack` commands:
 
 - reject source paths that escape the configured root;
 - reject absolute or traversal-based archive targets;
 - avoid following source symlinks by default;
 - detect target collisions, including collisions on case-insensitive filesystems;
 - block common secret files, credential directories, private keys, local caches, and temporary files;
-- build the context outside the source workspace in a user-only temporary directory;
-- clean temporary artifacts after success, failure, or cancellation.
+- make the staging directory accessible only to the current user and create it outside the source workspace;
+- write the archive to a unique sibling temporary file before finalizing it;
+- refuse to overwrite an existing archive unless `--force` is explicit;
+- clean staging and partial archive artifacts after success, failure, or cancellation unless `--keep-context` is explicit.
 
 Path-based blocking is not a content-aware secret scanner. CI should use a dedicated security tool when file-content scanning is required.
 

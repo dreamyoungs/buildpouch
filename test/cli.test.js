@@ -31,11 +31,11 @@ test("prints the package version", () => {
 });
 
 test("fails clearly for a planned but unimplemented command", () => {
-  const result = runCli(["pack"]);
+  const result = runCli(["submit"]);
 
   assert.equal(result.status, 1);
   assert.equal(result.stdout, "");
-  assert.equal(result.stderr, "Command \"pack\" is not implemented yet.\n");
+  assert.equal(result.stderr, "Command \"submit\" is not implemented yet.\n");
 });
 
 test("fails clearly for an unknown command", () => {
