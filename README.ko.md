@@ -8,7 +8,20 @@ BuildPouch는 모노레포에서 안전하고 최소화된 빌드 컨텍스트 �
 
 ## 프로젝트 상태
 
-BuildPouch는 개발 전 단계에 있습니다. 아래의 명령 인터페이스와 설정은 제안이며 변경될 수 있습니다. 아직 동작하는 CLI나 npm 패키지는 출시되지 않았습니다.
+BuildPouch는 초기 개발 단계에 있습니다. TypeScript CLI 골격에서 `--help`와 `--version`을 사용할 수 있지만, 아래의 명령과 설정은 여전히 제안이며 변경될 수 있습니다. 아직 npm 패키지는 출시되지 않았습니다.
+
+## 로컬 개발
+
+현재 BuildPouch에는 Node.js 24와 npm 11.12.1이 필요합니다.
+
+```sh
+npm install
+npm run check
+npm test
+npm pack --dry-run
+```
+
+빌드 후 `node dist/cli.js --help`로 로컬 CLI를 실행할 수 있습니다.
 
 ## BuildPouch가 필요한 이유
 
@@ -133,7 +146,7 @@ BuildPouch는 다음 작업을 수행하지 않습니다.
 
 ## 기여
 
-이 프로젝트는 공개적으로 설계하고 있습니다. 초기 구현의 골격이 마련되기 전까지 질문과 제안은 [GitHub Issues](https://github.com/dreamyoungs/buildpouch/issues)를 이용해 주세요.
+이 프로젝트는 공개적으로 설계하고 있습니다. 큰 규모의 Pull Request를 열기 전에 질문과 제안은 [GitHub Issues](https://github.com/dreamyoungs/buildpouch/issues)를 이용해 주세요.
 
 ## 라이선스
 
