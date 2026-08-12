@@ -23,7 +23,6 @@ function formatDuration(milliseconds: number): string {
 }
 
 export function formatSubmitPreparedHuman(prepared: PreparedSubmission): string {
-  const substitutionEntries = Object.entries(prepared.provider.substitutions).sort(([left], [right]) => left.localeCompare(right));
   const lines = [
     `Context: ${prepared.context.name}`,
     ...(prepared.context.summary === undefined ? [] : [
@@ -34,10 +33,22 @@ export function formatSubmitPreparedHuman(prepared: PreparedSubmission): string 
     `Archive size: ${formatBytes(prepared.archive.size)}`,
     `Provider: ${prepared.provider.name}`,
     ...(prepared.provider.target === undefined ? [] : [`Target: ${prepared.provider.target}`]),
-    `Project: ${prepared.provider.project}`,
-    `Region: ${prepared.provider.region}`,
-    `Build config: ${prepared.provider.config}`,
-    `Substitutions: ${substitutionEntries.length === 0 ? "none" : substitutionEntries.map(([key, value]) => `${key}=${value}`).join(", ")}`,
+    ...(prepared.provider.name === "gcp-cloud-build" ? (() => {
+      const substitutionEntries = Object.entries(prepared.provider.substitutions).sort(([left], [right]) => left.localeCompare(right));
+      return [
+        `Project: ${prepared.provider.project}`,
+        `Region: ${prepared.provider.region}`,
+        `Build config: ${prepared.provider.config}`,
+        `Substitutions: ${substitutionEntries.length === 0 ? "none" : substitutionEntries.map(([key, value]) => `${key}=${value}`).join(", ")}`
+      ];
+    })() : [
+      `Object Storage: ${prepared.provider.endpoint}/${prepared.provider.bucket}/${prepared.provider.prefix}`,
+      `Kubernetes context: ${prepared.provider.kubeContext}`,
+      `Namespace: ${prepared.provider.namespace}`,
+      `Job template: ${prepared.provider.jobTemplate}`,
+      `Container: ${prepared.provider.container}`,
+      `Variables: ${prepared.provider.variableNames.length === 0 ? "none" : prepared.provider.variableNames.join(", ")}`
+    ]),
     "Submitting build..."
   ];
   return `${lines.join("\n")}\n`;

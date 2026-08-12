@@ -15,7 +15,7 @@
 
 import { BuildPouchError } from "../errors.js";
 import { runProcess } from "../process/run.js";
-import type { BuildProvider, ProcessRunner, ProviderBuildResult, ProviderSubmitRequest } from "./types.js";
+import type { BuildProvider, GcpCloudBuildSubmitRequest, ProcessRunner, ProviderBuildResult } from "./types.js";
 
 const remoteFailureStatuses = new Set(["FAILURE", "INTERNAL_ERROR", "TIMEOUT", "CANCELLED", "EXPIRED"]);
 const overridableBuiltInSubstitutions = new Set([
@@ -76,7 +76,7 @@ function encodeSubstitutions(substitutions: Record<string, string>): string | un
   return `^${delimiter}^${serialized.join(delimiter)}`;
 }
 
-export function buildGcloudArguments(request: ProviderSubmitRequest): string[] {
+export function buildGcloudArguments(request: GcpCloudBuildSubmitRequest): string[] {
   validateProject(request.project);
   validateRegion(request.region);
   validateSubstitutions(request.substitutions);
@@ -153,10 +153,10 @@ function cancellationError(signal?: AbortSignal): BuildPouchError | undefined {
     : new BuildPouchError("USER_CANCELLATION", "Cloud Build submission cancelled by user.", 130);
 }
 
-export function createGcpCloudBuildProvider(runner: ProcessRunner = runProcess): BuildProvider {
+export function createGcpCloudBuildProvider(runner: ProcessRunner = runProcess): BuildProvider<GcpCloudBuildSubmitRequest> {
   return {
     "name": "gcp-cloud-build",
-    async submit(request: ProviderSubmitRequest): Promise<ProviderBuildResult> {
+    async submit(request: GcpCloudBuildSubmitRequest): Promise<ProviderBuildResult> {
       const startedAt = Date.now();
       let processResult;
       try {
