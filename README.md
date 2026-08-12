@@ -10,8 +10,6 @@ BuildPouch is a CLI project for creating safe, minimal build context archives fr
 
 BuildPouch is in pre-development. The command interface and configuration shown below are proposals and may change. No working CLI or npm package has been released yet.
 
-This repository does not have an open-source license yet. A license will be added before the first release.
-
 ## Why BuildPouch?
 
 An application inside a monorepo often needs files outside its own directory: shared packages, root manifests, lockfiles, generated clients, build configuration, or static assets.
@@ -136,3 +134,7 @@ Repository-owned tasks may prepare compiled output or a pruned dependency tree b
 ## Contributing
 
 The project is being designed in public. Until the initial implementation is scaffolded, please use [GitHub Issues](https://github.com/dreamyoungs/buildpouch/issues) for questions and proposals.
+
+## License
+
+BuildPouch is licensed under the [Apache License 2.0](LICENSE).
