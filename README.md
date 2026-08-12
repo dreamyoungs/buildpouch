@@ -8,7 +8,7 @@ BuildPouch is a CLI project for creating safe, minimal build context archives fr
 
 ## Project status
 
-BuildPouch is in early development. The TypeScript CLI scaffold supports `--help` and `--version`; the commands and configuration shown below remain proposals and may change. No npm package has been released yet.
+BuildPouch is in early development. The `inspect` command is available from source; `pack` and `submit` remain planned. The public interface may change, and no npm package has been released yet.
 
 ## Local development
 
@@ -54,17 +54,17 @@ Configuration and CLI arguments
 
 Context creation and provider submission remain separate stages so that failures are clear and each stage can be tested independently.
 
-## Planned MVP
+## MVP commands
 
-| Command | Responsibility |
-| --- | --- |
-| `buildpouch inspect` | Calculate and validate the context without copying files or contacting a cloud provider. |
-| `buildpouch pack` | Stage the validated files in a temporary directory and create a `tar.gz` archive. |
-| `buildpouch submit` | Pack a context, or accept an existing archive, and submit it through the configured provider. |
+| Command | Status | Responsibility |
+| --- | --- | --- |
+| `buildpouch inspect` | Available from source | Calculate and validate the context without copying files or contacting a cloud provider. |
+| `buildpouch pack` | Planned | Stage the validated files in a temporary directory and create a `tar.gz` archive. |
+| `buildpouch submit` | Planned | Pack a context, or accept an existing archive, and submit it through the configured provider. |
 
 The first planned provider is Google Cloud Build, invoked through the existing `gcloud` CLI. Provider-specific build configuration such as `build.json` or `cloudbuild.yaml` remains owned by the repository using BuildPouch.
 
-Planned command shape:
+Command shape:
 
 ```sh
 buildpouch inspect --config buildpouch.yaml
@@ -72,9 +72,17 @@ buildpouch pack --config buildpouch.yaml
 buildpouch submit --config buildpouch.yaml
 ```
 
-These commands are documentation previews and are not available yet.
+Until the npm package is released, build the project and run `inspect` locally:
 
-## Proposed configuration
+```sh
+npm run build
+node dist/cli.js inspect --config buildpouch.yaml
+node dist/cli.js inspect --config buildpouch.yaml --json
+```
+
+`inspect` reads metadata only. It reports every source-to-target mapping, individual file size, file count, and total size without staging files or contacting a provider.
+
+## Configuration
 
 ```yaml
 schemaVersion: 1
@@ -109,6 +117,8 @@ build:
 
 Entries form the source allowlist. Each entry maps a file, directory, or supported glob from `context.root` to a path inside the archive. Exclusions narrow the allowlist but never define the context by themselves.
 
+Relative `context.root` values are resolved from the configuration file directory. Entry sources are then resolved from that root. `required` defaults to `true`; a required entry that is missing or becomes empty after exclusions fails inspection.
+
 ## Design principles
 
 - **Allowlist first:** Include only explicitly selected build inputs.
@@ -119,7 +129,7 @@ Entries form the source allowlist. Each entry maps a file, directory, or support
 
 ## Security boundaries
 
-The MVP is planned to:
+The current `inspect` command:
 
 - reject source paths that escape the configured root;
 - reject absolute or traversal-based archive targets;
