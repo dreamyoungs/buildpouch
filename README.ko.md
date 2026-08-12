@@ -8,7 +8,7 @@ BuildPouch는 모노레포에서 안전하고 최소화된 빌드 컨텍스트 �
 
 ## 프로젝트 상태
 
-BuildPouch는 초기 개발 단계에 있습니다. 소스에서 `inspect`와 `pack` 명령을 사용할 수 있으며, `submit`은 아직 구현 예정입니다. 공개 인터페이스는 변경될 수 있고 npm 패키지는 아직 출시되지 않았습니다.
+BuildPouch는 초기 개발 단계에 있습니다. 소스에서 `inspect`, `pack`, `submit` MVP 명령을 사용할 수 있습니다. 공개 인터페이스는 변경될 수 있고 npm 패키지는 아직 출시되지 않았습니다.
 
 ## 로컬 개발
 
@@ -60,9 +60,9 @@ BuildPouch는 allowlist 우선 방식을 사용합니다. 빌드에 필요한 �
 | --- | --- | --- |
 | `buildpouch inspect` | 소스에서 사용 가능 | 파일을 복사하거나 클라우드 프로바이더에 연결하지 않고 컨텍스트를 계산하고 검증합니다. |
 | `buildpouch pack` | 소스에서 사용 가능 | 검증된 파일을 임시 디렉터리에 구성하고 `tar.gz` 아카이브를 만듭니다. |
-| `buildpouch submit` | 구현 예정 | 컨텍스트를 패키징하거나 기존 아카이브를 받아 설정된 프로바이더를 통해 제출합니다. |
+| `buildpouch submit` | 소스에서 사용 가능 | 컨텍스트를 패키징하거나 기존 아카이브를 받아 설정된 프로바이더를 통해 제출합니다. |
 
-첫 번째 예정 프로바이더는 기존 `gcloud` CLI를 통해 호출하는 Google Cloud Build입니다. `build.json`이나 `cloudbuild.yaml` 같은 프로바이더별 빌드 설정은 BuildPouch를 사용하는 저장소가 계속 소유합니다.
+첫 번째 프로바이더는 기존 `gcloud` CLI를 통해 호출하는 Google Cloud Build입니다. `build.json`이나 `cloudbuild.yaml` 같은 프로바이더별 빌드 설정은 BuildPouch를 사용하는 저장소가 계속 소유합니다.
 
 명령 형태:
 
@@ -80,11 +80,25 @@ node dist/cli.js inspect --config buildpouch.yaml
 node dist/cli.js inspect --config buildpouch.yaml --json
 node dist/cli.js pack --config buildpouch.yaml
 node dist/cli.js pack --config buildpouch.yaml --output customer-api.context.tar.gz --json
+node dist/cli.js submit --config buildpouch.yaml
+node dist/cli.js submit --config buildpouch.yaml --archive customer-api.context.tar.gz --json
 ```
 
 `inspect`는 metadata만 읽습니다. 파일을 staging하거나 프로바이더에 연결하지 않고 모든 source→target mapping, 개별 파일 크기, 파일 수와 전체 크기를 표시합니다.
 
 `pack`은 같은 검증을 다시 수행하고, 선택된 파일을 격리된 임시 디렉터리에 복사한 뒤 이식 가능한 gzip 압축 tar 아카이브를 만듭니다. 기본 출력은 현재 디렉터리의 `<context.name>.context.tar.gz`입니다. `--force`를 지정하지 않으면 기존 아카이브를 보존합니다. 명령 종료 후 staging 디렉터리를 확인해야 할 때만 `--keep-context`를 사용하세요.
+
+`submit`을 사용하려면 Google Cloud CLI가 설치되고 인증되어 있어야 합니다. `--archive`가 없으면 내부 임시 아카이브를 만들고 Cloud Build가 끝날 때까지 기다린 뒤 해당 아카이브를 제거합니다. `--archive`로 전달한 기존 아카이브는 절대 제거하지 않습니다. 최종 build ID, 상태, 소요 시간과 Cloud Console URL은 사람용 출력과 JSON 출력에서 모두 확인할 수 있습니다.
+
+한 번의 실행에 한해 프로바이더 값을 덮어쓸 수 있습니다.
+
+```sh
+node dist/cli.js submit --config buildpouch.yaml \
+  --project another-project \
+  --region us-central1 \
+  --build-config ./cloudbuild.yaml \
+  --substitution _APP_NAME=customer-api
+```
 
 ## 설정
 
@@ -123,6 +137,8 @@ Entry 목록은 source allowlist를 구성합니다. 각 entry는 `context.root`
 
 상대 `context.root` 값은 설정 파일이 있는 디렉터리를 기준으로 해석합니다. 각 entry의 source는 이 root를 기준으로 해석합니다. `required`의 기본값은 `true`이며, 필수 entry가 없거나 exclude 적용 후 비어 있으면 inspect가 실패합니다.
 
+상대 `build.config` 경로도 설정 파일이 있는 디렉터리를 기준으로 해석합니다. `--build-config` override는 현재 작업 디렉터리를 기준으로 해석합니다. 사용자 정의 Cloud Build substitution key는 `_`로 시작하고 대문자, 숫자와 underscore만 포함해야 합니다. Substitution 값은 명령 출력에 표시되므로 secret을 substitution으로 전달하지 말고 build configuration을 통해 Secret Manager를 사용하세요.
+
 ## 설계 원칙
 
 - **Allowlist 우선:** 명시적으로 선택한 빌드 입력만 포함합니다.
@@ -133,7 +149,7 @@ Entry 목록은 source allowlist를 구성합니다. 각 entry는 `context.root`
 
 ## 보안 경계
 
-현재 `inspect`와 `pack` 명령은 다음 동작을 수행합니다.
+현재 명령은 다음 동작을 수행합니다.
 
 - 설정된 root 밖으로 나가는 source 경로를 거부합니다.
 - 절대 경로 또는 상위 경로 이동을 포함한 archive target을 거부합니다.
@@ -144,6 +160,11 @@ Entry 목록은 source allowlist를 구성합니다. 각 entry는 `context.root`
 - 최종 경로에 확정하기 전에 고유한 같은 디렉터리의 임시 파일에 아카이브를 씁니다.
 - `--force`를 명시하지 않으면 기존 아카이브 덮어쓰기를 거부합니다.
 - `--keep-context`를 명시한 경우를 제외하고 성공, 실패 또는 취소 후 staging과 부분 아카이브를 정리합니다.
+- shell 없이 argument array로 `gcloud`를 실행합니다.
+- cloud credential을 읽거나 저장하지 않고 현재 `gcloud` identity를 사용합니다.
+- `submit`이 내부에서 만든 아카이브만 제거하고 사용자가 전달한 아카이브는 보존합니다.
+
+`submit`을 취소하면 로컬 `gcloud` process를 중단하고 임시 파일을 정리합니다. Cloud Build가 이미 접수한 원격 build까지 취소되는 것은 보장하지 않습니다.
 
 경로 기반 차단은 파일 내용을 분석하는 secret scanner가 아닙니다. 파일 내용 검사가 필요하면 CI에서 전용 보안 도구를 사용해야 합니다.
 

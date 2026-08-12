@@ -30,12 +30,13 @@ test("prints the package version", () => {
   assert.equal(result.stderr, "");
 });
 
-test("fails clearly for a planned but unimplemented command", () => {
-  const result = runCli(["submit"]);
+test("shows help for every implemented command", () => {
+  const results = ["inspect", "pack", "submit"].map((command) => runCli([command, "--help"]));
 
-  assert.equal(result.status, 1);
-  assert.equal(result.stdout, "");
-  assert.equal(result.stderr, "Command \"submit\" is not implemented yet.\n");
+  for (const result of results) {
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /Usage:\n  buildpouch/);
+  }
 });
 
 test("fails clearly for an unknown command", () => {

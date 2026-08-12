@@ -8,7 +8,7 @@ BuildPouch is a CLI project for creating safe, minimal build context archives fr
 
 ## Project status
 
-BuildPouch is in early development. The `inspect` and `pack` commands are available from source; `submit` remains planned. The public interface may change, and no npm package has been released yet.
+BuildPouch is in early development. The `inspect`, `pack`, and `submit` MVP commands are available from source. The public interface may change, and no npm package has been released yet.
 
 ## Local development
 
@@ -60,9 +60,9 @@ Context creation and provider submission remain separate stages so that failures
 | --- | --- | --- |
 | `buildpouch inspect` | Available from source | Calculate and validate the context without copying files or contacting a cloud provider. |
 | `buildpouch pack` | Available from source | Stage the validated files in a temporary directory and create a `tar.gz` archive. |
-| `buildpouch submit` | Planned | Pack a context, or accept an existing archive, and submit it through the configured provider. |
+| `buildpouch submit` | Available from source | Pack a context, or accept an existing archive, and submit it through the configured provider. |
 
-The first planned provider is Google Cloud Build, invoked through the existing `gcloud` CLI. Provider-specific build configuration such as `build.json` or `cloudbuild.yaml` remains owned by the repository using BuildPouch.
+The first provider is Google Cloud Build, invoked through the existing `gcloud` CLI. Provider-specific build configuration such as `build.json` or `cloudbuild.yaml` remains owned by the repository using BuildPouch.
 
 Command shape:
 
@@ -80,11 +80,25 @@ node dist/cli.js inspect --config buildpouch.yaml
 node dist/cli.js inspect --config buildpouch.yaml --json
 node dist/cli.js pack --config buildpouch.yaml
 node dist/cli.js pack --config buildpouch.yaml --output customer-api.context.tar.gz --json
+node dist/cli.js submit --config buildpouch.yaml
+node dist/cli.js submit --config buildpouch.yaml --archive customer-api.context.tar.gz --json
 ```
 
 `inspect` reads metadata only. It reports every source-to-target mapping, individual file size, file count, and total size without staging files or contacting a provider.
 
 `pack` repeats the same validation, copies the selected files into an isolated temporary directory, and writes a portable gzip-compressed tar archive. The default output is `<context.name>.context.tar.gz` in the current directory. Existing archives are preserved unless `--force` is supplied. Use `--keep-context` only when you need to inspect the staging directory after the command finishes.
+
+`submit` requires the Google Cloud CLI to be installed and authenticated. Without `--archive`, it creates an internal temporary archive, waits for Cloud Build to finish, and then removes that archive. An archive supplied with `--archive` is never removed. The final build ID, status, duration, and Cloud Console URL are available in both human and JSON output.
+
+Provider values can be overridden for one invocation:
+
+```sh
+node dist/cli.js submit --config buildpouch.yaml \
+  --project another-project \
+  --region us-central1 \
+  --build-config ./cloudbuild.yaml \
+  --substitution _APP_NAME=customer-api
+```
 
 ## Configuration
 
@@ -123,6 +137,8 @@ Entries form the source allowlist. Each entry maps a file, directory, or support
 
 Relative `context.root` values are resolved from the configuration file directory. Entry sources are then resolved from that root. `required` defaults to `true`; a required entry that is missing or becomes empty after exclusions fails inspection.
 
+Relative `build.config` paths are also resolved from the configuration file directory. A `--build-config` override is resolved from the current working directory. User-defined Cloud Build substitution keys must begin with `_` and contain only uppercase letters, numbers, and underscores. Substitution values appear in command output; use Secret Manager through the build configuration instead of passing secrets as substitutions.
+
 ## Design principles
 
 - **Allowlist first:** Include only explicitly selected build inputs.
@@ -133,7 +149,7 @@ Relative `context.root` values are resolved from the configuration file director
 
 ## Security boundaries
 
-The current `inspect` and `pack` commands:
+The current commands:
 
 - reject source paths that escape the configured root;
 - reject absolute or traversal-based archive targets;
@@ -144,6 +160,11 @@ The current `inspect` and `pack` commands:
 - write the archive to a unique sibling temporary file before finalizing it;
 - refuse to overwrite an existing archive unless `--force` is explicit;
 - clean staging and partial archive artifacts after success, failure, or cancellation unless `--keep-context` is explicit.
+- invoke `gcloud` with an argument array and without a shell;
+- use the current `gcloud` identity without reading or storing cloud credentials;
+- remove only archives created internally by `submit`, while preserving user-supplied archives.
+
+Cancelling `submit` stops the local `gcloud` process and cleans temporary files. It does not promise to cancel a remote build that Cloud Build has already accepted.
 
 Path-based blocking is not a content-aware secret scanner. CI should use a dedicated security tool when file-content scanning is required.
 
