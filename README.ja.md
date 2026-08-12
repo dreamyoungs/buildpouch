@@ -183,7 +183,9 @@ BuildPouchは、以下の作業を行いません。
 
 ## コントリビューション
 
-このプロジェクトは公開の場で設計を進めています。大規模なPull Requestを作成する前に、質問や提案を[GitHub Issues](https://github.com/dreamyoungs/buildpouch/issues)で共有してください。
+このプロジェクトは公開の場で設計を進めています。[コントリビューションガイド](CONTRIBUTING.ja.md)と[行動規範](CODE_OF_CONDUCT.ja.md)を読み、大規模なPull Requestを作成する前に質問や提案を[GitHub Issues](https://github.com/dreamyoungs/buildpouch/issues)で共有してください。脆弱性は公開issueではなく、[セキュリティポリシー](SECURITY.ja.md)の手順で報告してください。
+
+主な変更は[変更履歴](CHANGELOG.md)で管理します。
 
 ## ライセンス
 

@@ -183,7 +183,9 @@ Repository-owned tasks may prepare compiled output or a pruned dependency tree b
 
 ## Contributing
 
-The project is being designed in public. Please use [GitHub Issues](https://github.com/dreamyoungs/buildpouch/issues) for questions and proposals before opening a substantial pull request.
+The project is being designed in public. Please read the [contribution guide](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md), and use [GitHub Issues](https://github.com/dreamyoungs/buildpouch/issues) for questions and proposals before opening a substantial pull request. Report vulnerabilities through the [Security Policy](SECURITY.md), never through a public issue.
+
+Notable changes are tracked in the [Changelog](CHANGELOG.md).
 
 ## License
 
