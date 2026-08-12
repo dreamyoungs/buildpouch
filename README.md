@@ -77,7 +77,7 @@ Command shape:
 ```sh
 buildpouch inspect --config buildpouch.yaml
 buildpouch pack --config buildpouch.yaml
-buildpouch submit --config buildpouch.yaml
+buildpouch submit --config buildpouch.yaml --target gcp-development
 ```
 
 Until the npm package is released, build the project and run the commands locally:
@@ -96,12 +96,12 @@ node dist/cli.js submit --config buildpouch.yaml --archive customer-api.context.
 
 `pack` repeats the same validation, copies the selected files into an isolated temporary directory, and writes a portable gzip-compressed tar archive. The default output is `<context.name>.context.tar.gz` in the current directory. Existing archives are preserved unless `--force` is supplied. Use `--keep-context` only when you need to inspect the staging directory after the command finishes.
 
-`submit` requires the Google Cloud CLI to be installed and authenticated. Without `--archive`, it creates an internal temporary archive, waits for Cloud Build to finish, and then removes that archive. An archive supplied with `--archive` is never removed. The final build ID, status, duration, and Cloud Console URL are available in both human and JSON output.
+`submit` selects the target passed with `--target`, then `defaultTarget`, then the legacy `build` section. A sole named target is selected automatically; multiple named targets require either `--target` or `defaultTarget`. A Google Cloud Build target requires the Google Cloud CLI to be installed and authenticated. Without `--archive`, `submit` creates an internal temporary archive, waits for the build to finish, and then removes that archive. An archive supplied with `--archive` is never removed.
 
 Provider values can be overridden for one invocation:
 
 ```sh
-node dist/cli.js submit --config buildpouch.yaml \
+node dist/cli.js submit --config buildpouch.yaml --target gcp-development \
   --project another-project \
   --region us-central1 \
   --build-config ./cloudbuild.yaml \
@@ -132,20 +132,35 @@ context:
     - "**/.git/**"
     - "**/coverage/**"
 
-build:
-  provider: gcp-cloud-build
-  config: apps/customer/api/deploy/gcp/build.json
-  project: example-project
-  region: asia-northeast3
-  substitutions:
-    _APP_NAME: customer-api
+defaultTarget: gcp-development
+
+targets:
+  gcp-development:
+    provider: gcp-cloud-build
+    options:
+      config: apps/customer/api/deploy/gcp/build.json
+      project: example-project
+      region: asia-northeast3
+      substitutions:
+        _APP_NAME: customer-api
+
+  gcp-production:
+    provider: gcp-cloud-build
+    options:
+      config: apps/customer/api/deploy/gcp/build.json
+      project: production-project
+      region: asia-northeast3
+      substitutions:
+        _APP_NAME: customer-api
 ```
 
 Entries form the source allowlist. Each entry maps a file, directory, or supported glob from `context.root` to a path inside the archive. Exclusions narrow the allowlist but never define the context by themselves.
 
 Relative `context.root` values are resolved from the configuration file directory. Entry sources are then resolved from that root. `required` defaults to `true`; a required entry that is missing or becomes empty after exclusions fails inspection.
 
-Relative `build.config` paths are also resolved from the configuration file directory. A `--build-config` override is resolved from the current working directory. User-defined Cloud Build substitution keys must begin with `_` and contain only uppercase letters, numbers, and underscores. Substitution values appear in command output; use Secret Manager through the build configuration instead of passing secrets as substitutions.
+Named targets keep environment and provider choices outside the shared context definition. Target names may contain letters, numbers, dots, underscores, and hyphens. Provider-specific values live under `targets.<name>.options`. For backward compatibility, the original single `build` section remains supported and takes precedence when neither `--target` nor `defaultTarget` selects a named target.
+
+Relative Google Cloud Build `config` paths are resolved from the configuration file directory. A `--build-config` override is resolved from the current working directory. User-defined Cloud Build substitution keys must begin with `_` and contain only uppercase letters, numbers, and underscores. Substitution values appear in command output; use Secret Manager through the build configuration instead of passing secrets as substitutions.
 
 ## Design principles
 

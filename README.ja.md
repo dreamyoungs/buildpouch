@@ -77,7 +77,7 @@ BuildPouchは許可リストを優先する方式を採用します。ビルド�
 ```sh
 buildpouch inspect --config buildpouch.yaml
 buildpouch pack --config buildpouch.yaml
-buildpouch submit --config buildpouch.yaml
+buildpouch submit --config buildpouch.yaml --target gcp-development
 ```
 
 npmパッケージをリリースするまでは、プロジェクトをビルドして各コマンドをローカルで実行できます。
@@ -96,12 +96,12 @@ node dist/cli.js submit --config buildpouch.yaml --archive customer-api.context.
 
 `pack`は同じ検証を再度行い、選択されたファイルを分離された一時ディレクトリにコピーして、ポータブルなgzip圧縮tarアーカイブを作成します。デフォルトの出力先は、現在のディレクトリにある`<context.name>.context.tar.gz`です。`--force`を指定しない限り既存のアーカイブは保持されます。コマンド終了後にステージングディレクトリを確認する必要がある場合のみ、`--keep-context`を使用してください。
 
-`submit`を使用するには、Google Cloud CLIがインストールされ、認証済みである必要があります。`--archive`がない場合は内部の一時アーカイブを作成し、Cloud Buildの完了を待ってからそのアーカイブを削除します。`--archive`で渡した既存のアーカイブは削除しません。最終的なbuild ID、ステータス、所要時間、Cloud Console URLは、人向け出力とJSON出力の両方で確認できます。
+`submit`は、`--target`で指定したtarget、`defaultTarget`、従来の`build`セクションの順に送信先を選択します。名前付きtargetが1つだけの場合は自動的に選択され、複数ある場合は`--target`または`defaultTarget`が必要です。Google Cloud Build targetを使用するには、Google Cloud CLIがインストールされ、認証済みである必要があります。`--archive`がない場合は内部の一時アーカイブを作成し、buildの完了を待ってからそのアーカイブを削除します。`--archive`で渡した既存のアーカイブは削除しません。
 
 1回の実行に限り、プロバイダーの値を上書きできます。
 
 ```sh
-node dist/cli.js submit --config buildpouch.yaml \
+node dist/cli.js submit --config buildpouch.yaml --target gcp-development \
   --project another-project \
   --region us-central1 \
   --build-config ./cloudbuild.yaml \
@@ -132,20 +132,35 @@ context:
     - "**/.git/**"
     - "**/coverage/**"
 
-build:
-  provider: gcp-cloud-build
-  config: apps/customer/api/deploy/gcp/build.json
-  project: example-project
-  region: asia-northeast3
-  substitutions:
-    _APP_NAME: customer-api
+defaultTarget: gcp-development
+
+targets:
+  gcp-development:
+    provider: gcp-cloud-build
+    options:
+      config: apps/customer/api/deploy/gcp/build.json
+      project: example-project
+      region: asia-northeast3
+      substitutions:
+        _APP_NAME: customer-api
+
+  gcp-production:
+    provider: gcp-cloud-build
+    options:
+      config: apps/customer/api/deploy/gcp/build.json
+      project: production-project
+      region: asia-northeast3
+      substitutions:
+        _APP_NAME: customer-api
 ```
 
 エントリーの一覧がソースの許可リストを構成します。各エントリーは、`context.root`以下にあるファイル、ディレクトリ、または対応するglobをアーカイブ内のパスに対応付けます。除外設定は許可リストを絞り込みますが、それだけでコンテキストを定義するものではありません。
 
 相対的な`context.root`は設定ファイルのディレクトリを基準に解決されます。各エントリーのsourceは、このrootを基準に解決されます。`required`のデフォルト値は`true`で、必須エントリーが存在しない場合や除外後に空になる場合はinspectが失敗します。
 
-相対的な`build.config`パスも設定ファイルのディレクトリを基準に解決されます。`--build-config`の上書きは現在の作業ディレクトリを基準に解決されます。ユーザー定義のCloud Build substitution keyは`_`で始まり、大文字、数字、underscoreのみを含める必要があります。Substitutionの値はコマンド出力に表示されるため、secretをsubstitutionとして渡さず、build configurationを通じてSecret Managerを使用してください。
+名前付きtargetを使用すると、共通のcontext定義と環境・プロバイダーの選択を分離できます。Target名には英字、数字、ピリオド、underscore、hyphenを使用でき、プロバイダー固有の値は`targets.<name>.options`の下に置きます。後方互換性のため、従来の単一`build`セクションも引き続きサポートされ、`--target`と`defaultTarget`が名前付きtargetを選択しない場合は`build`が優先されます。
+
+Google Cloud Buildの相対的な`config`パスは設定ファイルのディレクトリを基準に解決されます。`--build-config`の上書きは現在の作業ディレクトリを基準に解決されます。ユーザー定義のCloud Build substitution keyは`_`で始まり、大文字、数字、underscoreのみを含める必要があります。Substitutionの値はコマンド出力に表示されるため、secretをsubstitutionとして渡さず、build configurationを通じてSecret Managerを使用してください。
 
 ## 設計原則
 

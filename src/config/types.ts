@@ -15,18 +15,30 @@ export interface ContextConfig {
   "exclude": string[];
 }
 
-export interface BuildConfig {
-  "provider": "gcp-cloud-build";
+export interface GcpCloudBuildOptions {
   "config": string;
   "project": string;
   "region": string;
   "substitutions": Record<string, string>;
 }
 
+export interface BuildConfig extends GcpCloudBuildOptions {
+  "provider": "gcp-cloud-build";
+}
+
+export interface GcpCloudBuildTarget {
+  "provider": "gcp-cloud-build";
+  "options": GcpCloudBuildOptions;
+}
+
+export type BuildTargetConfig = GcpCloudBuildTarget;
+
 export interface BuildPouchConfig {
   "schemaVersion": 1;
   "context": ContextConfig;
   "build"?: BuildConfig;
+  "defaultTarget"?: string;
+  "targets": Record<string, BuildTargetConfig>;
 }
 
 export interface LoadedConfig {

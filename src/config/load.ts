@@ -17,7 +17,15 @@ import { dirname, resolve } from "node:path";
 import { parseDocument } from "yaml";
 
 import { BuildPouchError } from "../errors.js";
-import type { BuildConfig, BuildPouchConfig, ContextConfig, ContextEntry, LoadedConfig } from "./types.js";
+import type {
+  BuildConfig,
+  BuildPouchConfig,
+  BuildTargetConfig,
+  ContextConfig,
+  ContextEntry,
+  GcpCloudBuildOptions,
+  LoadedConfig
+} from "./types.js";
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -92,6 +100,26 @@ function parseContext(value: unknown): ContextConfig {
   };
 }
 
+function parseGcpCloudBuildOptions(value: unknown, field: string): GcpCloudBuildOptions {
+  const options = expectRecord(value, field);
+  expectKeys(options, ["config", "project", "region", "substitutions"], field);
+
+  const substitutionsValue = options.substitutions ?? {};
+  const substitutionsRecord = expectRecord(substitutionsValue, `${field}.substitutions`);
+  const substitutions: Record<string, string> = {};
+
+  for (const [key, substitution] of Object.entries(substitutionsRecord)) {
+    substitutions[key] = expectString(substitution, `${field}.substitutions.${key}`);
+  }
+
+  return {
+    "config": expectString(options.config, `${field}.config`),
+    "project": expectString(options.project, `${field}.project`),
+    "region": expectString(options.region, `${field}.region`),
+    substitutions
+  };
+}
+
 function parseBuild(value: unknown): BuildConfig {
   const build = expectRecord(value, "build");
   expectKeys(build, ["provider", "config", "project", "region", "substitutions"], "build");
@@ -100,26 +128,53 @@ function parseBuild(value: unknown): BuildConfig {
     configurationError('build.provider must be "gcp-cloud-build".');
   }
 
-  const substitutionsValue = build.substitutions ?? {};
-  const substitutionsRecord = expectRecord(substitutionsValue, "build.substitutions");
-  const substitutions: Record<string, string> = {};
+  return {
+    "provider": "gcp-cloud-build",
+    ...parseGcpCloudBuildOptions({
+      "config": build.config,
+      "project": build.project,
+      "region": build.region,
+      "substitutions": build.substitutions
+    }, "build")
+  };
+}
 
-  for (const [key, substitution] of Object.entries(substitutionsRecord)) {
-    substitutions[key] = expectString(substitution, `build.substitutions.${key}`);
+function parseTarget(value: unknown, name: string): BuildTargetConfig {
+  const field = `targets.${name}`;
+  const target = expectRecord(value, field);
+  expectKeys(target, ["provider", "options"], field);
+
+  if (target.provider !== "gcp-cloud-build") {
+    configurationError(`${field}.provider must be "gcp-cloud-build".`);
   }
 
   return {
     "provider": "gcp-cloud-build",
-    "config": expectString(build.config, "build.config"),
-    "project": expectString(build.project, "build.project"),
-    "region": expectString(build.region, "build.region"),
-    "substitutions": substitutions
+    "options": parseGcpCloudBuildOptions(target.options, `${field}.options`)
   };
+}
+
+function parseTargets(value: unknown): Record<string, BuildTargetConfig> {
+  if (value === undefined) {
+    return {};
+  }
+
+  const targetValues = expectRecord(value, "targets");
+  const targets: Record<string, BuildTargetConfig> = {};
+
+  for (const [name, target] of Object.entries(targetValues)) {
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name)) {
+      configurationError(`Invalid target name: ${name}.`);
+    }
+    targets[name] = parseTarget(target, name);
+  }
+
+  return targets;
 }
 
 function parseConfiguration(value: unknown): BuildPouchConfig {
   const configuration = expectRecord(value, "configuration");
-  expectKeys(configuration, ["schemaVersion", "context", "build"], "configuration");
+  expectKeys(configuration, ["schemaVersion", "context", "build", "defaultTarget", "targets"], "configuration");
 
   if (configuration.schemaVersion !== 1) {
     configurationError("schemaVersion must be 1.");
@@ -127,11 +182,20 @@ function parseConfiguration(value: unknown): BuildPouchConfig {
 
   const result: BuildPouchConfig = {
     "schemaVersion": 1,
-    "context": parseContext(configuration.context)
+    "context": parseContext(configuration.context),
+    "targets": parseTargets(configuration.targets)
   };
 
   if (configuration.build !== undefined) {
     result.build = parseBuild(configuration.build);
+  }
+
+  if (configuration.defaultTarget !== undefined) {
+    const defaultTarget = expectString(configuration.defaultTarget, "defaultTarget");
+    if (result.targets[defaultTarget] === undefined) {
+      configurationError(`defaultTarget references an unknown target: ${defaultTarget}.`);
+    }
+    result.defaultTarget = defaultTarget;
   }
 
   return result;

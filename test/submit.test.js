@@ -236,6 +236,151 @@ context:
   await assert.rejects(access(fixture.capture), { "code": "ENOENT" });
 });
 
+test("submit selects an explicit named target", async (t) => {
+  const fixture = await createFixture(t);
+  await writeFile(fixture.config, `schemaVersion: 1
+context:
+  name: sample
+  root: ./workspace
+  entries:
+    - source: app
+      target: app
+targets:
+  development:
+    provider: gcp-cloud-build
+    options:
+      config: "configs/cloud build.yaml"
+      project: development-project
+      region: asia-northeast3
+      substitutions:
+        _APP_NAME: development
+  production:
+    provider: gcp-cloud-build
+    options:
+      config: "configs/cloud build.yaml"
+      project: production-project
+      region: global
+      substitutions:
+        _APP_NAME: production
+`);
+
+  const result = runCli(["submit", "--config", fixture.config, "--target", "production", "--archive", fixture.archive, "--json"], fixture.fixture, fixtureEnvironment(fixture));
+
+  assert.equal(result.status, 0, result.stderr);
+  const submitted = JSON.parse(result.stdout);
+  assert.equal(submitted.provider.target, "production");
+  assert.equal(submitted.provider.project, "production-project");
+  assert.equal(submitted.provider.region, "global");
+  assert.equal(submitted.provider.substitutions._APP_NAME, "production");
+});
+
+test("submit uses defaultTarget when no target is requested", async (t) => {
+  const fixture = await createFixture(t);
+  await writeFile(fixture.config, `schemaVersion: 1
+context:
+  name: sample
+  root: ./workspace
+  entries:
+    - source: app
+      target: app
+defaultTarget: development
+targets:
+  development:
+    provider: gcp-cloud-build
+    options:
+      config: "configs/cloud build.yaml"
+      project: development-project
+      region: asia-northeast3
+      substitutions: {}
+`);
+
+  const result = runCli(["submit", "--config", fixture.config, "--archive", fixture.archive, "--json"], fixture.fixture, fixtureEnvironment(fixture));
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(JSON.parse(result.stdout).provider.target, "development");
+});
+
+test("submit automatically selects a sole named target", async (t) => {
+  const fixture = await createFixture(t);
+  await writeFile(fixture.config, `schemaVersion: 1
+context:
+  name: sample
+  root: ./workspace
+  entries:
+    - source: app
+      target: app
+targets:
+  only:
+    provider: gcp-cloud-build
+    options:
+      config: "configs/cloud build.yaml"
+      project: only-project
+      region: global
+`);
+
+  const result = runCli(["submit", "--config", fixture.config, "--archive", fixture.archive, "--json"], fixture.fixture, fixtureEnvironment(fixture));
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(JSON.parse(result.stdout).provider.target, "only");
+});
+
+test("submit requires target selection when multiple targets have no default", async (t) => {
+  const fixture = await createFixture(t);
+  await writeFile(fixture.config, `schemaVersion: 1
+context:
+  name: sample
+  root: ./workspace
+  entries:
+    - source: app
+      target: app
+targets:
+  first:
+    provider: gcp-cloud-build
+    options:
+      config: "configs/cloud build.yaml"
+      project: first-project
+      region: global
+  second:
+    provider: gcp-cloud-build
+    options:
+      config: "configs/cloud build.yaml"
+      project: second-project
+      region: global
+`);
+
+  const result = runCli(["submit", "--config", fixture.config, "--archive", fixture.archive, "--json"], fixture.fixture, fixtureEnvironment(fixture));
+
+  assert.equal(result.status, 1);
+  assert.equal(JSON.parse(result.stdout).error.code, "PROVIDER_TARGET_REQUIRED");
+});
+
+test("submit rejects an unknown named target", async (t) => {
+  const fixture = await createFixture(t);
+  const result = runCli(["submit", "--config", fixture.config, "--target", "missing", "--archive", fixture.archive, "--json"], fixture.fixture, fixtureEnvironment(fixture));
+
+  assert.equal(result.status, 1);
+  assert.equal(JSON.parse(result.stdout).error.code, "PROVIDER_TARGET_NOT_FOUND");
+});
+
+test("configuration rejects defaultTarget when the target does not exist", async (t) => {
+  const fixture = await createFixture(t);
+  await writeFile(fixture.config, `schemaVersion: 1
+context:
+  name: sample
+  root: ./workspace
+  entries:
+    - source: app
+      target: app
+defaultTarget: missing
+targets: {}
+`);
+
+  const result = runCli(["submit", "--config", fixture.config, "--archive", fixture.archive, "--json"], fixture.fixture, fixtureEnvironment(fixture));
+
+  assert.equal(result.status, 1);
+  assert.equal(JSON.parse(result.stdout).error.code, "INVALID_CONFIGURATION");
+});
+
 test("submit cancellation stops gcloud and removes the internal archive", async (t) => {
   const fixture = await createFixture(t);
   const child = spawn(process.execPath, [cliPath, "submit", "--config", fixture.config, "--json"], {
