@@ -1,5 +1,9 @@
 # BuildPouch
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/dreamyoungs/buildpouch/main/docs/assets/buildpouch-social-preview.jpg" alt="BuildPouch logo: a yellow pouch holding build files" width="800">
+</p>
+
 [English](README.md) | [한국어](docs/README.ko.md) | [日本語](docs/README.ja.md)
 
 > Pack only what your build needs.

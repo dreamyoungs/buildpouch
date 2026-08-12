@@ -1,5 +1,9 @@
 # BuildPouch
 
+<p align="center">
+  <img src="assets/buildpouch-social-preview.jpg" alt="BuildPouch 로고: 빌드 파일을 담은 노란색 파우치" width="800">
+</p>
+
 [English](../README.md) | [한국어](README.ko.md) | [日本語](README.ja.md)
 
 > 빌드에 필요한 것만 담으세요.

@@ -1,5 +1,9 @@
 # BuildPouch
 
+<p align="center">
+  <img src="assets/buildpouch-social-preview.jpg" alt="BuildPouchロゴ：ビルドファイルを入れた黄色いポーチ" width="800">
+</p>
+
 [English](../README.md) | [한국어](README.ko.md) | [日本語](README.ja.md)
 
 > ビルドに必要なものだけを詰め込みましょう。
