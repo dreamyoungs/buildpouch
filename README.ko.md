@@ -8,7 +8,7 @@ BuildPouch는 모노레포에서 안전하고 최소화된 빌드 컨텍스트 �
 
 ## 프로젝트 상태
 
-BuildPouch는 초기 개발 단계에 있습니다. TypeScript CLI 골격에서 `--help`와 `--version`을 사용할 수 있지만, 아래의 명령과 설정은 여전히 제안이며 변경될 수 있습니다. 아직 npm 패키지는 출시되지 않았습니다.
+BuildPouch는 초기 개발 단계에 있습니다. 소스에서 `inspect` 명령을 사용할 수 있으며, `pack`과 `submit`은 아직 구현 예정입니다. 공개 인터페이스는 변경될 수 있고 npm 패키지는 아직 출시되지 않았습니다.
 
 ## 로컬 개발
 
@@ -54,17 +54,17 @@ BuildPouch는 allowlist 우선 방식을 사용합니다. 빌드에 필요한 �
 
 컨텍스트 생성과 프로바이더 제출은 별도 단계로 유지합니다. 이를 통해 실패 원인을 분명하게 구분하고 각 단계를 독립적으로 테스트할 수 있습니다.
 
-## 예정된 MVP
+## MVP 명령
 
-| 명령 | 책임 |
-| --- | --- |
-| `buildpouch inspect` | 파일을 복사하거나 클라우드 프로바이더에 연결하지 않고 컨텍스트를 계산하고 검증합니다. |
-| `buildpouch pack` | 검증된 파일을 임시 디렉터리에 구성하고 `tar.gz` 아카이브를 만듭니다. |
-| `buildpouch submit` | 컨텍스트를 패키징하거나 기존 아카이브를 받아 설정된 프로바이더를 통해 제출합니다. |
+| 명령 | 상태 | 책임 |
+| --- | --- | --- |
+| `buildpouch inspect` | 소스에서 사용 가능 | 파일을 복사하거나 클라우드 프로바이더에 연결하지 않고 컨텍스트를 계산하고 검증합니다. |
+| `buildpouch pack` | 구현 예정 | 검증된 파일을 임시 디렉터리에 구성하고 `tar.gz` 아카이브를 만듭니다. |
+| `buildpouch submit` | 구현 예정 | 컨텍스트를 패키징하거나 기존 아카이브를 받아 설정된 프로바이더를 통해 제출합니다. |
 
 첫 번째 예정 프로바이더는 기존 `gcloud` CLI를 통해 호출하는 Google Cloud Build입니다. `build.json`이나 `cloudbuild.yaml` 같은 프로바이더별 빌드 설정은 BuildPouch를 사용하는 저장소가 계속 소유합니다.
 
-예정된 명령 형태:
+명령 형태:
 
 ```sh
 buildpouch inspect --config buildpouch.yaml
@@ -72,9 +72,17 @@ buildpouch pack --config buildpouch.yaml
 buildpouch submit --config buildpouch.yaml
 ```
 
-위 명령은 문서상의 미리보기이며 아직 사용할 수 없습니다.
+npm 패키지를 출시하기 전에는 프로젝트를 빌드한 뒤 `inspect`를 로컬에서 실행할 수 있습니다.
 
-## 제안된 설정
+```sh
+npm run build
+node dist/cli.js inspect --config buildpouch.yaml
+node dist/cli.js inspect --config buildpouch.yaml --json
+```
+
+`inspect`는 metadata만 읽습니다. 파일을 staging하거나 프로바이더에 연결하지 않고 모든 source→target mapping, 개별 파일 크기, 파일 수와 전체 크기를 표시합니다.
+
+## 설정
 
 ```yaml
 schemaVersion: 1
@@ -109,6 +117,8 @@ build:
 
 Entry 목록은 source allowlist를 구성합니다. 각 entry는 `context.root` 아래의 파일, 디렉터리 또는 지원되는 glob을 아카이브 내부 경로에 대응시킵니다. Exclude는 allowlist의 범위를 줄이지만 그것만으로 컨텍스트를 정의하지는 않습니다.
 
+상대 `context.root` 값은 설정 파일이 있는 디렉터리를 기준으로 해석합니다. 각 entry의 source는 이 root를 기준으로 해석합니다. `required`의 기본값은 `true`이며, 필수 entry가 없거나 exclude 적용 후 비어 있으면 inspect가 실패합니다.
+
 ## 설계 원칙
 
 - **Allowlist 우선:** 명시적으로 선택한 빌드 입력만 포함합니다.
@@ -119,7 +129,7 @@ Entry 목록은 source allowlist를 구성합니다. 각 entry는 `context.root`
 
 ## 보안 경계
 
-MVP는 다음 동작을 수행하도록 계획되어 있습니다.
+현재 `inspect` 명령은 다음 동작을 수행합니다.
 
 - 설정된 root 밖으로 나가는 source 경로를 거부합니다.
 - 절대 경로 또는 상위 경로 이동을 포함한 archive target을 거부합니다.

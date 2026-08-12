@@ -18,7 +18,7 @@ test("shows help when invoked without arguments", () => {
 
   assert.equal(result.status, 0);
   assert.match(result.stdout, /Usage:\n  buildpouch <command>/);
-  assert.match(result.stdout, /Commands \(planned\):/);
+  assert.match(result.stdout, /Commands:/);
   assert.equal(result.stderr, "");
 });
 
@@ -31,11 +31,11 @@ test("prints the package version", () => {
 });
 
 test("fails clearly for a planned but unimplemented command", () => {
-  const result = runCli(["inspect"]);
+  const result = runCli(["pack"]);
 
   assert.equal(result.status, 1);
   assert.equal(result.stdout, "");
-  assert.equal(result.stderr, "Command \"inspect\" is not implemented yet.\n");
+  assert.equal(result.stderr, "Command \"pack\" is not implemented yet.\n");
 });
 
 test("fails clearly for an unknown command", () => {
