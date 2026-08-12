@@ -1,6 +1,6 @@
 # Contributing to BuildPouch
 
-[English](CONTRIBUTING.md) | [한국어](CONTRIBUTING.ko.md) | [日本語](CONTRIBUTING.ja.md)
+[Project README](../README.md) | [English](CONTRIBUTING.md) | [한국어](CONTRIBUTING.ko.md) | [日本語](CONTRIBUTING.ja.md)
 
 Thank you for helping improve BuildPouch. Keep changes focused, testable, and independent of any one company or monorepo.
 
