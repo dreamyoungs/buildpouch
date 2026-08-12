@@ -1,6 +1,6 @@
 # Code of Conduct
 
-[Project README](../README.md) | [English](CODE_OF_CONDUCT.md) | [한국어](../docs/CODE_OF_CONDUCT.ko.md) | [日本語](../docs/CODE_OF_CONDUCT.ja.md)
+[Project README](https://github.com/dreamyoungs/buildpouch#readme) | [English](https://github.com/dreamyoungs/buildpouch/blob/main/.github/CODE_OF_CONDUCT.md) | [한국어](https://github.com/dreamyoungs/buildpouch/blob/main/docs/CODE_OF_CONDUCT.ko.md) | [日本語](https://github.com/dreamyoungs/buildpouch/blob/main/docs/CODE_OF_CONDUCT.ja.md)
 
 ## Our commitment
 

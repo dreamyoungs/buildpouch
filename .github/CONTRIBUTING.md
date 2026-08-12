@@ -1,6 +1,6 @@
 # Contributing to BuildPouch
 
-[Project README](../README.md) | [English](CONTRIBUTING.md) | [한국어](../docs/CONTRIBUTING.ko.md) | [日本語](../docs/CONTRIBUTING.ja.md)
+[Project README](https://github.com/dreamyoungs/buildpouch#readme) | [English](https://github.com/dreamyoungs/buildpouch/blob/main/.github/CONTRIBUTING.md) | [한국어](https://github.com/dreamyoungs/buildpouch/blob/main/docs/CONTRIBUTING.ko.md) | [日本語](https://github.com/dreamyoungs/buildpouch/blob/main/docs/CONTRIBUTING.ja.md)
 
 Thank you for helping improve BuildPouch. Keep changes focused, testable, and independent of any one company or monorepo.
 
@@ -8,7 +8,7 @@ Thank you for helping improve BuildPouch. Keep changes focused, testable, and in
 
 - Use GitHub Issues for bugs and proposals. Discuss substantial changes before implementation.
 - Never post credentials, secrets, private source code, or sensitive build logs.
-- Read the [Code of Conduct](CODE_OF_CONDUCT.md) and [Security Policy](SECURITY.md).
+- Read the [Code of Conduct](https://github.com/dreamyoungs/buildpouch/blob/main/.github/CODE_OF_CONDUCT.md) and [Security Policy](https://github.com/dreamyoungs/buildpouch/security/policy).
 
 ## Development setup
 
