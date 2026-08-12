@@ -31,7 +31,27 @@ export interface GcpCloudBuildTarget {
   "options": GcpCloudBuildOptions;
 }
 
-export type BuildTargetConfig = GcpCloudBuildTarget;
+export interface NcpNksBuildkitOptions {
+  "endpoint": string;
+  "region": string;
+  "bucket": string;
+  "prefix": string;
+  "awsProfile"?: string;
+  "kubeContext": string;
+  "namespace": string;
+  "jobTemplate": string;
+  "container": string;
+  "timeoutSeconds": number;
+  "pollIntervalSeconds": number;
+  "variables": Record<string, string>;
+}
+
+export interface NcpNksBuildkitTarget {
+  "provider": "ncp-nks-buildkit";
+  "options": NcpNksBuildkitOptions;
+}
+
+export type BuildTargetConfig = GcpCloudBuildTarget | NcpNksBuildkitTarget;
 
 export interface BuildPouchConfig {
   "schemaVersion": 1;

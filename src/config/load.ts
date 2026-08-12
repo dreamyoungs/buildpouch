@@ -24,7 +24,8 @@ import type {
   ContextConfig,
   ContextEntry,
   GcpCloudBuildOptions,
-  LoadedConfig
+  LoadedConfig,
+  NcpNksBuildkitOptions
 } from "./types.js";
 
 type UnknownRecord = Record<string, unknown>;
@@ -55,6 +56,14 @@ function expectString(value: unknown, field: string): string {
   }
 
   return value;
+}
+
+function expectInteger(value: unknown, field: string, minimum: number, maximum: number): number {
+  if (!Number.isInteger(value) || (value as number) < minimum || (value as number) > maximum) {
+    configurationError(`${field} must be an integer from ${minimum} to ${maximum}.`);
+  }
+
+  return value as number;
 }
 
 function parseEntry(value: unknown, index: number): ContextEntry {
@@ -139,19 +148,112 @@ function parseBuild(value: unknown): BuildConfig {
   };
 }
 
+function parseNcpEndpoint(value: unknown, field: string): string {
+  const endpoint = expectString(value, field);
+  let parsed: URL;
+
+  try {
+    parsed = new URL(endpoint);
+  } catch {
+    configurationError(`${field} must be a valid HTTPS URL.`);
+  }
+
+  if (parsed.protocol !== "https:" || parsed.username !== "" || parsed.password !== "" || parsed.search !== "" || parsed.hash !== "" || !["", "/"].includes(parsed.pathname)) {
+    configurationError(`${field} must be an HTTPS origin without credentials, path, query, or fragment.`);
+  }
+
+  return parsed.origin;
+}
+
+function parseNcpVariables(value: unknown, field: string): Record<string, string> {
+  const variablesRecord = expectRecord(value ?? {}, field);
+  const variables: Record<string, string> = {};
+
+  if (Object.keys(variablesRecord).length > 100) {
+    configurationError(`${field} supports at most 100 entries.`);
+  }
+
+  for (const [key, variable] of Object.entries(variablesRecord)) {
+    if (!/^[A-Z_][A-Z0-9_]*$/.test(key)) {
+      configurationError(`${field} contains an invalid environment variable name: ${key}.`);
+    }
+    if (key.startsWith("BUILDPOUCH_")) {
+      configurationError(`${field} cannot override reserved BUILDPOUCH_ variables: ${key}.`);
+    }
+    variables[key] = expectString(variable, `${field}.${key}`);
+  }
+
+  return variables;
+}
+
+function parseNcpNksBuildkitOptions(value: unknown, field: string): NcpNksBuildkitOptions {
+  const options = expectRecord(value, field);
+  expectKeys(options, [
+    "endpoint", "region", "bucket", "prefix", "awsProfile", "kubeContext", "namespace",
+    "jobTemplate", "container", "timeoutSeconds", "pollIntervalSeconds", "variables"
+  ], field);
+
+  const region = expectString(options.region, `${field}.region`);
+  if (!/^[a-z][a-z0-9-]*[a-z0-9]$/.test(region)) {
+    configurationError(`${field}.region is invalid: ${region}.`);
+  }
+
+  const bucket = expectString(options.bucket, `${field}.bucket`);
+  if (bucket.length < 3 || bucket.length > 63 || !/^[a-z0-9][a-z0-9.-]*[a-z0-9]$/.test(bucket) || bucket.includes("..")) {
+    configurationError(`${field}.bucket is not a valid Object Storage bucket name: ${bucket}.`);
+  }
+
+  const prefix = options.prefix === undefined ? "buildpouch" : expectString(options.prefix, `${field}.prefix`);
+  if (prefix.startsWith("/") || prefix.endsWith("/") || prefix.split("/").some((segment) => segment === "" || segment === "." || segment === ".." || !/^[A-Za-z0-9._-]+$/.test(segment))) {
+    configurationError(`${field}.prefix must contain safe slash-separated object key segments.`);
+  }
+
+  const namespace = expectString(options.namespace, `${field}.namespace`);
+  if (namespace.length > 63 || !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(namespace)) {
+    configurationError(`${field}.namespace must be a valid Kubernetes namespace.`);
+  }
+
+  const container = options.container === undefined ? "buildpouch" : expectString(options.container, `${field}.container`);
+  if (container.length > 63 || !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(container)) {
+    configurationError(`${field}.container must be a valid Kubernetes container name.`);
+  }
+
+  return {
+    "endpoint": parseNcpEndpoint(options.endpoint, `${field}.endpoint`),
+    "region": region,
+    "bucket": bucket,
+    "prefix": prefix,
+    ...(options.awsProfile === undefined ? {} : { "awsProfile": expectString(options.awsProfile, `${field}.awsProfile`) }),
+    "kubeContext": expectString(options.kubeContext, `${field}.kubeContext`),
+    "namespace": namespace,
+    "jobTemplate": expectString(options.jobTemplate, `${field}.jobTemplate`),
+    "container": container,
+    "timeoutSeconds": options.timeoutSeconds === undefined ? 1800 : expectInteger(options.timeoutSeconds, `${field}.timeoutSeconds`, 1, 86400),
+    "pollIntervalSeconds": options.pollIntervalSeconds === undefined ? 5 : expectInteger(options.pollIntervalSeconds, `${field}.pollIntervalSeconds`, 1, 60),
+    "variables": parseNcpVariables(options.variables, `${field}.variables`)
+  };
+}
+
 function parseTarget(value: unknown, name: string): BuildTargetConfig {
   const field = `targets.${name}`;
   const target = expectRecord(value, field);
   expectKeys(target, ["provider", "options"], field);
 
-  if (target.provider !== "gcp-cloud-build") {
-    configurationError(`${field}.provider must be "gcp-cloud-build".`);
+  if (target.provider === "gcp-cloud-build") {
+    return {
+      "provider": "gcp-cloud-build",
+      "options": parseGcpCloudBuildOptions(target.options, `${field}.options`)
+    };
   }
 
-  return {
-    "provider": "gcp-cloud-build",
-    "options": parseGcpCloudBuildOptions(target.options, `${field}.options`)
-  };
+  if (target.provider === "ncp-nks-buildkit") {
+    return {
+      "provider": "ncp-nks-buildkit",
+      "options": parseNcpNksBuildkitOptions(target.options, `${field}.options`)
+    };
+  }
+
+  configurationError(`${field}.provider must be "gcp-cloud-build" or "ncp-nks-buildkit".`);
 }
 
 function parseTargets(value: unknown): Record<string, BuildTargetConfig> {

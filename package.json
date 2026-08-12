@@ -4,9 +4,12 @@
   "description": "Pack only what your build needs — create safe, minimal build contexts for monorepos and submit them to build providers.",
   "keywords": [
     "build-context",
+    "buildkit",
     "cli",
     "cloud-build",
+    "kubernetes",
     "monorepo",
+    "ncp",
     "tar"
   ],
   "homepage": "https://github.com/dreamyoungs/buildpouch#readme",

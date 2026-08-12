@@ -70,7 +70,7 @@ BuildPouchは許可リストを優先する方式を採用します。ビルド�
 | `buildpouch pack` | ソースから利用可能 | 検証済みのファイルを一時ディレクトリに配置し、`tar.gz`アーカイブを作成します。 |
 | `buildpouch submit` | ソースから利用可能 | コンテキストをパッケージ化するか既存のアーカイブを受け取り、設定されたプロバイダーを通じて送信します。 |
 
-最初のプロバイダーは、既存の`gcloud` CLIを通じて呼び出すGoogle Cloud Buildです。`build.json`や`cloudbuild.yaml`などのプロバイダー固有のビルド設定は、BuildPouchを利用するリポジトリが引き続き所有します。
+Google Cloud Buildは既存の`gcloud` CLIを通じて、NCP NKS BuildKitは既存の`aws`および`kubectl` CLIを通じてサポートされます。プロバイダー固有のビルド設定、Kubernetes Job template、デプロイ動作は、BuildPouchを利用するリポジトリが引き続き所有します。
 
 コマンド形式:
 
@@ -96,7 +96,7 @@ node dist/cli.js submit --config buildpouch.yaml --archive customer-api.context.
 
 `pack`は同じ検証を再度行い、選択されたファイルを分離された一時ディレクトリにコピーして、ポータブルなgzip圧縮tarアーカイブを作成します。デフォルトの出力先は、現在のディレクトリにある`<context.name>.context.tar.gz`です。`--force`を指定しない限り既存のアーカイブは保持されます。コマンド終了後にステージングディレクトリを確認する必要がある場合のみ、`--keep-context`を使用してください。
 
-`submit`は、`--target`で指定したtarget、`defaultTarget`、従来の`build`セクションの順に送信先を選択します。名前付きtargetが1つだけの場合は自動的に選択され、複数ある場合は`--target`または`defaultTarget`が必要です。Google Cloud Build targetを使用するには、Google Cloud CLIがインストールされ、認証済みである必要があります。`--archive`がない場合は内部の一時アーカイブを作成し、buildの完了を待ってからそのアーカイブを削除します。`--archive`で渡した既存のアーカイブは削除しません。
+`submit`は、`--target`で指定したtarget、`defaultTarget`、従来の`build`セクションの順に送信先を選択します。名前付きtargetが1つだけの場合は自動的に選択され、複数ある場合は`--target`または`defaultTarget`が必要です。Google Cloud Build targetには認証済みのGoogle Cloud CLIが必要です。NCP targetには、NCP Object Storageへアクセスできる認証済みAWS CLIと、対象NKS clusterの`kubectl` contextが必要です。`--archive`がない場合は内部の一時アーカイブを作成し、buildの完了を待ってからそのローカルアーカイブを削除します。`--archive`で渡した既存のローカルアーカイブは削除しません。
 
 1回の実行に限り、プロバイダーの値を上書きできます。
 
@@ -152,6 +152,24 @@ targets:
       region: asia-northeast3
       substitutions:
         _APP_NAME: customer-api
+
+  ncp-development:
+    provider: ncp-nks-buildkit
+    options:
+      endpoint: https://kr.object.ncloudstorage.com
+      region: kr-standard
+      bucket: example-build-contexts
+      prefix: buildpouch/development
+      awsProfile: ncp
+      kubeContext: nks-development
+      namespace: build-system
+      jobTemplate: apps/customer/api/deploy/ncp/build-job.yaml
+      container: buildpouch
+      timeoutSeconds: 1800
+      pollIntervalSeconds: 5
+      variables:
+        IMAGE_REF: example.kr.ncr.ntruss.com/customer-api:development
+        DEPLOYMENT_NAME: customer-api
 ```
 
 エントリーの一覧がソースの許可リストを構成します。各エントリーは、`context.root`以下にあるファイル、ディレクトリ、または対応するglobをアーカイブ内のパスに対応付けます。除外設定は許可リストを絞り込みますが、それだけでコンテキストを定義するものではありません。
@@ -160,7 +178,26 @@ targets:
 
 名前付きtargetを使用すると、共通のcontext定義と環境・プロバイダーの選択を分離できます。Target名には英字、数字、ピリオド、underscore、hyphenを使用でき、プロバイダー固有の値は`targets.<name>.options`の下に置きます。後方互換性のため、従来の単一`build`セクションも引き続きサポートされ、`--target`と`defaultTarget`が名前付きtargetを選択しない場合は`build`が優先されます。
 
+例では`buildpouch.yaml`を使用していますが、JSON形式のBuildPouch設定を使いたい場合はYAML parserがJSON構文も受け付けます。既存アプリケーションの`config.json`は、そのアプリケーションが所有する別のschemaであるため自動解釈されません。代わりに、リポジトリ所有のtaskがそのファイルを読み取り、BuildPouch targetの値を生成または選択できます。既存のGCP `build.json`は、GCP targetの`config` fieldからそのまま利用できます。
+
 Google Cloud Buildの相対的な`config`パスは設定ファイルのディレクトリを基準に解決されます。`--build-config`の上書きは現在の作業ディレクトリを基準に解決されます。ユーザー定義のCloud Build substitution keyは`_`で始まり、大文字、数字、underscoreのみを含める必要があります。Substitutionの値はコマンド出力に表示されるため、secretをsubstitutionとして渡さず、build configurationを通じてSecret Managerを使用してください。
+
+### NCP NKS BuildKit target
+
+`ncp-nks-buildkit`プロバイダーは、BuildPouchのarchive-first契約を維持しながらNCPサービスを使用します。
+
+1. S3互換APIを通じて、一意の名前を持つcontext archiveを設定済みのprivate [NCP Object Storage](https://api.ncloud-docs.com/docs/ja/storage-objectstorage) bucketへアップロードします。
+2. 予約済みの`BUILDPOUCH_*` metadataと、設定された秘密ではない`variables`を、リポジトリ所有の`batch/v1` Job templateにある指定containerへ注入します。
+3. 既存のNKS contextとnamespaceにJobを作成し、terminal状態になるまで確認します。
+4. 成功または確認済みのリモート失敗後に、一時Object Storage objectを削除します。
+
+BuildPouchはbucket、NKS cluster、[Container Registry](https://guide.ncloud-docs.com/docs/en/containerregistry-overview)、Kubernetes service account、RBAC、credential、registry pull/push secretを作成しません。実際のarchiveダウンロード、SHA-256検証、展開、BuildKit実行、image push、任意のNKSデプロイはJob templateが担当します。このため、BuildPouchにデプロイの意味を持たせず、build・pushだけを行うtemplateとデプロイまで行うtemplateを分けて運用できます。完了したJobは確認できるように残されるため、自動削除が必要な場合はtemplateに`ttlSecondsAfterFinished`を設定してください。
+
+選択したcontainerには、`BUILDPOUCH_CONTEXT_ENDPOINT`、`BUILDPOUCH_CONTEXT_REGION`、`BUILDPOUCH_CONTEXT_BUCKET`、`BUILDPOUCH_CONTEXT_KEY`、`BUILDPOUCH_CONTEXT_NAME`、`BUILDPOUCH_CONTEXT_SIZE`、`BUILDPOUCH_CONTEXT_SHA256`、`BUILDPOUCH_SUBMISSION_ID`、`BUILDPOUCH_TARGET`が注入されます。同名の既存環境変数は置き換えられます。Templateが所有する`secretKeyRef`、volume、command、image、security context、その他のcontainerは維持されます。
+
+`endpoint`、`region`、`bucket`、`kubeContext`、`namespace`、`jobTemplate`は必須です。`prefix`のデフォルトは`buildpouch`、`container`は`buildpouch`、`timeoutSeconds`は1800、`pollIntervalSeconds`は5です。相対的な`jobTemplate`パスはBuildPouch設定ファイルのディレクトリを基準に解決されます。`awsProfile`はローカルAWS CLI profileだけを選択し、Jobには送信されません。`variables`はJob manifestに表示されるため、credentialやsecretを絶対に含めず、templateのKubernetes Secretを使用してください。
+
+Job作成が明確に拒否された場合、BuildPouchはアップロードしたobjectを削除します。Job作成結果が曖昧な場合、または受付後のキャンセル、timeout、状態確認の曖昧な失敗では、実行中の可能性があるbuildを壊さないようにJobとsource objectを保持します。報告されたJobを確認し、不要になった後で対象objectだけを削除してください。成功結果はプロバイダーのweb console URLであるかのように扱わず、`kubernetes://<context>/<namespace>/jobs/<name>` locatorを返します。
 
 ## 設計原則
 
@@ -183,11 +220,13 @@ Google Cloud Buildの相対的な`config`パスは設定ファイルのディレ
 - 最終パスに確定する前に、同じディレクトリ内の一意な一時ファイルへアーカイブを書き込みます。
 - `--force`を明示しない限り、既存のアーカイブの上書きを拒否します。
 - `--keep-context`を明示した場合を除き、成功、失敗、キャンセルの後にステージングと不完全なアーカイブを削除します。
-- shellを使わず、argument arrayで`gcloud`を実行します。
-- cloud credentialを読み取ったり保存したりせず、現在の`gcloud` identityを使用します。
+- shellを使わず、argument arrayで`gcloud`、`aws`、`kubectl`を実行します。
+- cloud credentialを読み取ったり保存したりせず、現在のCLI identityを使用します。
+- NCP Job manifestをshellや永続的な生成ファイルではなく、`kubectl`の標準入力で渡します。
+- 送信準備時の人向け出力とJSON出力には、NCP variableの名前だけを表示し、設定値は表示しません。
 - `submit`が内部で作成したアーカイブだけを削除し、ユーザーが渡したアーカイブは保持します。
 
-`submit`をキャンセルすると、ローカルの`gcloud` processを停止し、一時ファイルを削除します。Cloud Buildがすでに受け付けたリモートbuildまでキャンセルされることは保証しません。
+`submit`をキャンセルすると、実行中のローカルprovider processを停止し、ローカルの一時ファイルを削除します。Cloud BuildまたはNKSがすでに受け付けたリモートbuildまでキャンセルされることは保証しません。NKS Job受付後の保持動作は、上記の境界に従います。
 
 パスに基づくブロックは、ファイル内容を解析するシークレットスキャナーではありません。ファイル内容の検査が必要な場合は、CIで専用のセキュリティツールを使用してください。
 

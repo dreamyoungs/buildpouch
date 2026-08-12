@@ -70,7 +70,7 @@ Context creation and provider submission remain separate stages so that failures
 | `buildpouch pack` | Available from source | Stage the validated files in a temporary directory and create a `tar.gz` archive. |
 | `buildpouch submit` | Available from source | Pack a context, or accept an existing archive, and submit it through the configured provider. |
 
-The first provider is Google Cloud Build, invoked through the existing `gcloud` CLI. Provider-specific build configuration such as `build.json` or `cloudbuild.yaml` remains owned by the repository using BuildPouch.
+Supported providers are Google Cloud Build through the existing `gcloud` CLI and NCP NKS BuildKit through the existing `aws` and `kubectl` CLIs. Provider-specific build configuration, Kubernetes Job templates, and deployment behavior remain owned by the repository using BuildPouch.
 
 Command shape:
 
@@ -96,7 +96,7 @@ node dist/cli.js submit --config buildpouch.yaml --archive customer-api.context.
 
 `pack` repeats the same validation, copies the selected files into an isolated temporary directory, and writes a portable gzip-compressed tar archive. The default output is `<context.name>.context.tar.gz` in the current directory. Existing archives are preserved unless `--force` is supplied. Use `--keep-context` only when you need to inspect the staging directory after the command finishes.
 
-`submit` selects the target passed with `--target`, then `defaultTarget`, then the legacy `build` section. A sole named target is selected automatically; multiple named targets require either `--target` or `defaultTarget`. A Google Cloud Build target requires the Google Cloud CLI to be installed and authenticated. Without `--archive`, `submit` creates an internal temporary archive, waits for the build to finish, and then removes that archive. An archive supplied with `--archive` is never removed.
+`submit` selects the target passed with `--target`, then `defaultTarget`, then the legacy `build` section. A sole named target is selected automatically; multiple named targets require either `--target` or `defaultTarget`. A Google Cloud Build target requires an authenticated Google Cloud CLI. An NCP target requires authenticated AWS CLI access to NCP Object Storage and a `kubectl` context for the target NKS cluster. Without `--archive`, `submit` creates an internal temporary archive, waits for the build to finish, and then removes that local archive. A local archive supplied with `--archive` is never removed.
 
 Provider values can be overridden for one invocation:
 
@@ -152,6 +152,24 @@ targets:
       region: asia-northeast3
       substitutions:
         _APP_NAME: customer-api
+
+  ncp-development:
+    provider: ncp-nks-buildkit
+    options:
+      endpoint: https://kr.object.ncloudstorage.com
+      region: kr-standard
+      bucket: example-build-contexts
+      prefix: buildpouch/development
+      awsProfile: ncp
+      kubeContext: nks-development
+      namespace: build-system
+      jobTemplate: apps/customer/api/deploy/ncp/build-job.yaml
+      container: buildpouch
+      timeoutSeconds: 1800
+      pollIntervalSeconds: 5
+      variables:
+        IMAGE_REF: example.kr.ncr.ntruss.com/customer-api:development
+        DEPLOYMENT_NAME: customer-api
 ```
 
 Entries form the source allowlist. Each entry maps a file, directory, or supported glob from `context.root` to a path inside the archive. Exclusions narrow the allowlist but never define the context by themselves.
@@ -160,7 +178,26 @@ Relative `context.root` values are resolved from the configuration file director
 
 Named targets keep environment and provider choices outside the shared context definition. Target names may contain letters, numbers, dots, underscores, and hyphens. Provider-specific values live under `targets.<name>.options`. For backward compatibility, the original single `build` section remains supported and takes precedence when neither `--target` nor `defaultTarget` selects a named target.
 
+The examples use `buildpouch.yaml`, but the YAML parser also accepts JSON syntax when a JSON-formatted BuildPouch configuration is preferred. Existing application `config.json` files are not interpreted automatically because their schemas belong to the application; repository-owned tasks may read them and generate or select BuildPouch target values. Existing GCP `build.json` files remain directly usable through a GCP target's `config` field.
+
 Relative Google Cloud Build `config` paths are resolved from the configuration file directory. A `--build-config` override is resolved from the current working directory. User-defined Cloud Build substitution keys must begin with `_` and contain only uppercase letters, numbers, and underscores. Substitution values appear in command output; use Secret Manager through the build configuration instead of passing secrets as substitutions.
+
+### NCP NKS BuildKit target
+
+The `ncp-nks-buildkit` provider keeps BuildPouch's archive-first contract while using NCP services:
+
+1. upload a uniquely named context archive to the configured private [NCP Object Storage](https://api.ncloud-docs.com/docs/en/storage-objectstorage) bucket through its S3-compatible API;
+2. inject reserved `BUILDPOUCH_*` metadata and configured nonsecret `variables` into one named container in a repository-owned `batch/v1` Job template;
+3. create the Job in the existing NKS context and namespace, then poll it to a terminal state;
+4. remove the temporary Object Storage object after a confirmed success or remote failure.
+
+BuildPouch does not provision the bucket, NKS cluster, [Container Registry](https://guide.ncloud-docs.com/docs/en/containerregistry-overview), Kubernetes service account, RBAC, credentials, or registry pull/push secrets. The Job template owns the actual archive download, SHA-256 verification, extraction, BuildKit invocation, image push, and any optional NKS deployment. This lets one template build and push only, while another can also deploy, without placing deployment semantics in BuildPouch. BuildPouch leaves terminal Jobs for inspection; set `ttlSecondsAfterFinished` in the template when automatic Job cleanup is desired.
+
+The selected container receives these reserved variables: `BUILDPOUCH_CONTEXT_ENDPOINT`, `BUILDPOUCH_CONTEXT_REGION`, `BUILDPOUCH_CONTEXT_BUCKET`, `BUILDPOUCH_CONTEXT_KEY`, `BUILDPOUCH_CONTEXT_NAME`, `BUILDPOUCH_CONTEXT_SIZE`, `BUILDPOUCH_CONTEXT_SHA256`, `BUILDPOUCH_SUBMISSION_ID`, and `BUILDPOUCH_TARGET`. Existing environment entries with those names are replaced. Template-owned `secretKeyRef`, volumes, commands, images, security context, and other containers are preserved.
+
+`endpoint`, `region`, `bucket`, `kubeContext`, `namespace`, and `jobTemplate` are required. `prefix` defaults to `buildpouch`, `container` to `buildpouch`, `timeoutSeconds` to 1800, and `pollIntervalSeconds` to 5. Relative `jobTemplate` paths are resolved from the BuildPouch configuration directory. `awsProfile` selects a local AWS CLI profile and is not sent to the Job. `variables` are visible in the Job manifest and must never contain credentials or secrets; use Kubernetes Secrets in the template instead.
+
+If Job creation is definitively rejected, BuildPouch removes the uploaded object. An ambiguous creation result, or cancellation, timeout, or ambiguous polling after acceptance, preserves the Job and source object so a possibly running build is not broken. Inspect the reported Job and remove the exact object after confirming that it is no longer needed. A successful result uses a `kubernetes://<context>/<namespace>/jobs/<name>` locator rather than claiming a provider web-console URL.
 
 ## Design principles
 
@@ -182,12 +219,14 @@ The current commands:
 - make the staging directory accessible only to the current user and create it outside the source workspace;
 - write the archive to a unique sibling temporary file before finalizing it;
 - refuse to overwrite an existing archive unless `--force` is explicit;
-- clean staging and partial archive artifacts after success, failure, or cancellation unless `--keep-context` is explicit.
-- invoke `gcloud` with an argument array and without a shell;
-- use the current `gcloud` identity without reading or storing cloud credentials;
+- clean staging and partial archive artifacts after success, failure, or cancellation unless `--keep-context` is explicit;
+- invoke `gcloud`, `aws`, and `kubectl` with argument arrays and without a shell;
+- use the current CLI identities without reading or storing cloud credentials;
+- pass NCP Job manifests through `kubectl` standard input rather than a shell or a persistent generated file;
+- expose NCP variable names, but not configured variable values, in prepared human and JSON output;
 - remove only archives created internally by `submit`, while preserving user-supplied archives.
 
-Cancelling `submit` stops the local `gcloud` process and cleans temporary files. It does not promise to cancel a remote build that Cloud Build has already accepted.
+Cancelling `submit` stops the active local provider process and cleans local temporary files. It does not promise to cancel a remote build already accepted by Cloud Build or NKS. The NCP preservation behavior after Job acceptance is described above.
 
 Path-based blocking is not a content-aware secret scanner. CI should use a dedicated security tool when file-content scanning is required.
 
