@@ -5,22 +5,23 @@
  *
  * 호출 관계:
  * - 진입: npm의 `buildpouch` bin 또는 컴파일된 `dist/cli.js`
- * - 후속: `inspect`, `pack`, `submit` 구현이 추가되면 각 명령 모듈로 위임한다.
+ * - 후속: `inspect`, `pack` 명령 모듈로 위임하며 `submit`은 아직 안내만 제공한다.
  *
  * 데이터·부수효과:
- * - `package.json`과 inspect 대상 설정·source metadata를 읽고 결과를 출력한다.
- * - 파일을 변경하거나 네트워크 요청을 보내지 않는다.
+ * - `package.json`, 설정, source metadata를 읽고 결과를 출력한다.
+ * - `pack`은 임시 staging directory와 최종 archive를 생성할 수 있다.
  *
  * 실패·보안 경계:
- * - 미구현 명령과 알 수 없는 인자는 종료 코드 1로 반환한다.
+ * - 알려진 오류는 안정적인 코드와 종료 코드로 출력한다.
  */
 
 import { readFileSync } from "node:fs";
 
 import { runInspect } from "./commands/inspect.js";
+import { runPack } from "./commands/pack.js";
 import { BuildPouchError } from "./errors.js";
 
-const plannedCommands = new Set(["pack", "submit"]);
+const plannedCommands = new Set(["submit"]);
 
 const helpText = `BuildPouch — Pack only what your build needs.
 
@@ -31,7 +32,7 @@ Usage:
 
 Commands:
   inspect    Calculate and validate a build context.
-  pack       Create a validated build context archive (planned).
+  pack       Create a validated build context archive.
   submit     Submit an archive to a build provider (planned).
 
 Options:
@@ -67,6 +68,10 @@ async function run(args: string[]): Promise<number> {
     return runInspect(args.slice(1));
   }
 
+  if (firstArgument === "pack") {
+    return runPack(args.slice(1));
+  }
+
   if (plannedCommands.has(firstArgument)) {
     process.stderr.write(`Command "${firstArgument}" is not implemented yet.\n`);
     return 1;
@@ -89,5 +94,5 @@ try {
   } else {
     process.stderr.write(`Error [${publicError.code}]: ${publicError.message}\n`);
   }
-  process.exitCode = 1;
+  process.exitCode = publicError.exitCode;
 }

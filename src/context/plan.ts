@@ -2,7 +2,7 @@
  * 검증된 allowlist entry를 실제 파일 목록과 archive target으로 변환한다.
  *
  * 호출 관계:
- * - 진입: `inspect` 명령
+ * - 진입: `inspect`, `pack` 명령
  * - 입력: `src/config/load.ts`가 반환한 설정
  *
  * 데이터·부수효과:
@@ -279,6 +279,13 @@ export async function planContext(loaded: LoadedConfig): Promise<InspectionResul
           continue;
         }
         throw new BuildPouchError("TARGET_COLLISION", `Archive target collision: ${existing.source} and ${planned.source} both map to ${planned.target}.`);
+      }
+
+      const prefixCollision = [...plannedByTarget.entries()].find(([existingTarget]) =>
+        collisionKey.startsWith(`${existingTarget}/`) || existingTarget.startsWith(`${collisionKey}/`)
+      );
+      if (prefixCollision !== undefined) {
+        throw new BuildPouchError("TARGET_COLLISION", `Archive file/directory collision: ${prefixCollision[1].target} conflicts with ${planned.target}.`);
       }
 
       plannedByTarget.set(collisionKey, planned);

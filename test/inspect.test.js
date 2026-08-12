@@ -212,6 +212,25 @@ context:
   assert.equal(JSON.parse(result.stdout).error.code, "TARGET_COLLISION");
 });
 
+test("inspect detects file and directory target collisions", async (t) => {
+  const { fixture, config } = await createFixture(t);
+  await writeFile(config, `schemaVersion: 1
+context:
+  name: collision
+  root: ./workspace
+  entries:
+    - source: apps/selected-app/index.js
+      target: app
+    - source: packages/used-package/index.js
+      target: app/index.js
+`);
+
+  const result = runCli(["inspect", "--config", config, "--json"], fixture);
+
+  assert.equal(result.status, 1);
+  assert.equal(JSON.parse(result.stdout).error.code, "TARGET_COLLISION");
+});
+
 test("inspect rejects unknown configuration fields", async (t) => {
   const { fixture, config } = await createFixture(t);
   await writeFile(config, `schemaVersion: 1

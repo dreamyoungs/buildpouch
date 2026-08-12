@@ -44,6 +44,7 @@
     "typescript": "7.0.2"
   },
   "dependencies": {
+    "tar": "7.5.22",
     "yaml": "2.9.0"
   }
 }
