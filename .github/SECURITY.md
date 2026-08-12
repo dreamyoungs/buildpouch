@@ -1,6 +1,6 @@
 # Security Policy
 
-[Project README](../README.md) | [English](SECURITY.md) | [한국어](../docs/SECURITY.ko.md) | [日本語](../docs/SECURITY.ja.md)
+[Project README](https://github.com/dreamyoungs/buildpouch#readme) | [English](https://github.com/dreamyoungs/buildpouch/blob/main/.github/SECURITY.md) | [한국어](https://github.com/dreamyoungs/buildpouch/blob/main/docs/SECURITY.ko.md) | [日本語](https://github.com/dreamyoungs/buildpouch/blob/main/docs/SECURITY.ja.md)
 
 ## Supported versions
 
