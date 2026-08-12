@@ -4,7 +4,7 @@
 
 ## Supported versions
 
-BuildPouch has not published an npm release yet. Until the first release, security fixes target the latest commit on `main`. Unofficial archives, forks, and modified builds are not supported by this policy.
+Security fixes target the latest 0.1.x release. The `main` branch may contain fixes that have not been released yet. Unofficial archives, forks, and modified builds are not supported by this policy.
 
 ## Reporting a vulnerability
 

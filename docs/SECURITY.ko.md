@@ -4,7 +4,7 @@
 
 ## 지원 버전
 
-BuildPouch는 아직 npm release를 배포하지 않았습니다. 첫 release 전까지 보안 수정은 `main`의 최신 commit을 대상으로 합니다. 비공식 archive, fork와 수정된 build는 이 정책의 지원 대상이 아닙니다.
+보안 수정은 최신 0.1.x release를 대상으로 합니다. `main` branch에는 아직 release되지 않은 수정이 포함될 수 있습니다. 비공식 archive, fork와 수정된 build는 이 정책의 지원 대상이 아닙니다.
 
 ## 취약점 신고
 
