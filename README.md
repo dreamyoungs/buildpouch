@@ -115,14 +115,15 @@ npx buildpouch submit --config buildpouch.yaml --archive customer-api.context.ta
 
 `inspect` reads metadata only. It reports every source-to-target mapping, individual file size, file count, and total size without staging files or contacting a provider.
 
-`dependencies check` supports npm `package-lock.json` lockfile version 3 and pnpm lockfile version 9. It checks the complete resolved graph against npm-compatible registry metadata, including transitive dependencies. The command fails closed when a release is too new, publication time or integrity is missing, registry integrity differs, lifecycle scripts are not explicitly allowed, a non-registry source appears, or a package name is new relative to `--baseline-lockfile`. Exact `name@version` allowances are available through repeatable `--allow-install-script` and `--allow-new-package` options. JSON output includes a shortest known dependency path for every violation. The command reads package metadata but never installs or executes package code.
+`dependencies check` supports npm `package-lock.json` lockfile version 3 and pnpm lockfile version 9. It checks the complete resolved graph against npm-compatible registry metadata, including transitive dependencies. The command fails closed when a release is too new, publication time or integrity is missing, registry integrity differs, lifecycle scripts are not explicitly allowed, a non-registry source appears, or a package name is new relative to `--baseline-lockfile`. Exact `name@version` allowances are available through repeatable `--allow-install-script`, `--allow-new-package`, and `--allow-release-age` options. JSON output includes a shortest known dependency path for every violation. The command reads package metadata but never installs or executes package code.
 
 ```sh
 buildpouch dependencies check \
   --lockfile pnpm-lock.yaml \
   --baseline-lockfile trusted-pnpm-lock.yaml \
   --minimum-release-age 7d \
-  --allow-install-script nx@23.1.1
+  --allow-install-script nx@23.1.1 \
+  --allow-release-age buildpouch@0.2.0
 ```
 
 `pack` repeats the same validation, copies the selected files into an isolated temporary directory, and writes a portable gzip-compressed tar archive. The default output is `<context.name>.context.tar.gz` in the current directory. Existing archives are preserved unless `--force` is supplied. Use `--keep-context` only when you need to inspect the staging directory after the command finishes.

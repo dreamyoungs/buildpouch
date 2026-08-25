@@ -115,14 +115,15 @@ npx buildpouch submit --config buildpouch.yaml --archive customer-api.context.ta
 
 `inspect`는 metadata만 읽습니다. 파일을 staging하거나 프로바이더에 연결하지 않고 모든 source→target mapping, 개별 파일 크기, 파일 수와 전체 크기를 표시합니다.
 
-`dependencies check`는 npm `package-lock.json` lockfile version 3과 pnpm lockfile version 9를 지원합니다. 전이 의존성을 포함한 전체 resolved graph를 npm 호환 registry metadata와 대조합니다. 공개 후 최소 시간이 지나지 않았거나 공개 시각·integrity가 없고, registry integrity가 다르거나, 허용하지 않은 lifecycle script·registry 외부 source가 있거나, `--baseline-lockfile`에 없던 패키지 이름이 나타나면 안전하게 실패합니다. 반복 가능한 `--allow-install-script`와 `--allow-new-package`는 정확한 `name@version`만 예외로 허용합니다. JSON 결과에는 위반 패키지의 최단 dependency path가 포함됩니다. 이 명령은 패키지 metadata만 읽고 패키지를 설치하거나 실행하지 않습니다.
+`dependencies check`는 npm `package-lock.json` lockfile version 3과 pnpm lockfile version 9를 지원합니다. 전이 의존성을 포함한 전체 resolved graph를 npm 호환 registry metadata와 대조합니다. 공개 후 최소 시간이 지나지 않았거나 공개 시각·integrity가 없고, registry integrity가 다르거나, 허용하지 않은 lifecycle script·registry 외부 source가 있거나, `--baseline-lockfile`에 없던 패키지 이름이 나타나면 안전하게 실패합니다. 반복 가능한 `--allow-install-script`, `--allow-new-package`, `--allow-release-age`는 정확한 `name@version`만 예외로 허용합니다. JSON 결과에는 위반 패키지의 최단 dependency path가 포함됩니다. 이 명령은 패키지 metadata만 읽고 패키지를 설치하거나 실행하지 않습니다.
 
 ```sh
 buildpouch dependencies check \
   --lockfile pnpm-lock.yaml \
   --baseline-lockfile trusted-pnpm-lock.yaml \
   --minimum-release-age 7d \
-  --allow-install-script nx@23.1.1
+  --allow-install-script nx@23.1.1 \
+  --allow-release-age buildpouch@0.2.0
 ```
 
 `pack`은 같은 검증을 다시 수행하고, 선택된 파일을 격리된 임시 디렉터리에 복사한 뒤 이식 가능한 gzip 압축 tar 아카이브를 만듭니다. 기본 출력은 현재 디렉터리의 `<context.name>.context.tar.gz`입니다. `--force`를 지정하지 않으면 기존 아카이브를 보존합니다. 명령 종료 후 staging 디렉터리를 확인해야 할 때만 `--keep-context`를 사용하세요.
