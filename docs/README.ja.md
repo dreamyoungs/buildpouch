@@ -86,6 +86,7 @@ BuildPouchは許可リストを優先する方式を採用します。ビルド�
 
 | コマンド | 状態 | 役割 |
 | --- | --- | --- |
+| `buildpouch dependencies check` | 利用可能 | パッケージをインストールせず、npm・pnpmの全resolved dependencyを検査してpolicy違反をブロックします。 |
 | `buildpouch inspect` | 利用可能 | ファイルをコピーしたりクラウドプロバイダーへ接続したりせず、コンテキストを算出して検証します。 |
 | `buildpouch pack` | 利用可能 | 検証済みのファイルを一時ディレクトリに配置し、`tar.gz`アーカイブを作成します。 |
 | `buildpouch submit` | 利用可能 | コンテキストをパッケージ化するか既存のアーカイブを受け取り、設定されたプロバイダーを通じて送信します。 |
@@ -98,6 +99,7 @@ Google Cloud Buildは既存の`gcloud` CLIを通じて、NCP NKS BuildKitは既�
 buildpouch inspect --config buildpouch.yaml
 buildpouch pack --config buildpouch.yaml
 buildpouch submit --config buildpouch.yaml --target gcp-development
+buildpouch dependencies check --lockfile pnpm-lock.yaml --minimum-release-age 7d
 ```
 
 プロジェクトにBuildPouchをインストールした後、`npx`でコマンドを実行します。
@@ -112,6 +114,16 @@ npx buildpouch submit --config buildpouch.yaml --archive customer-api.context.ta
 ```
 
 `inspect`はmetadataだけを読み取ります。ファイルをステージングしたりプロバイダーへ接続したりせず、すべてのsource→target mapping、各ファイルサイズ、ファイル数、合計サイズを表示します。
+
+`dependencies check`はnpm `package-lock.json` lockfile version 3とpnpm lockfile version 9をサポートします。推移的依存関係を含む全resolved graphをnpm互換registry metadataと照合します。公開から必要時間が経過していない、公開時刻・integrityがない、registry integrityが一致しない、許可されていないlifecycle script・registry外sourceがある、または`--baseline-lockfile`にないパッケージ名が現れた場合はfail closedします。繰り返し指定できる`--allow-install-script`と`--allow-new-package`は正確な`name@version`だけを例外にします。JSON結果には違反パッケージへの最短dependency pathが含まれます。このコマンドはパッケージmetadataだけを読み、パッケージをインストールまたは実行しません。
+
+```sh
+buildpouch dependencies check \
+  --lockfile pnpm-lock.yaml \
+  --baseline-lockfile trusted-pnpm-lock.yaml \
+  --minimum-release-age 7d \
+  --allow-install-script nx@23.1.1
+```
 
 `pack`は同じ検証を再度行い、選択されたファイルを分離された一時ディレクトリにコピーして、ポータブルなgzip圧縮tarアーカイブを作成します。デフォルトの出力先は、現在のディレクトリにある`<context.name>.context.tar.gz`です。`--force`を指定しない限り既存のアーカイブは保持されます。コマンド終了後にステージングディレクトリを確認する必要がある場合のみ、`--keep-context`を使用してください。
 

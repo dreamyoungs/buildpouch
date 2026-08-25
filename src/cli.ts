@@ -5,7 +5,7 @@
  *
  * 호출 관계:
  * - 진입: npm의 `buildpouch` bin 또는 컴파일된 `dist/cli.js`
- * - 후속: `inspect`, `pack`, `submit` 명령 모듈로 위임한다.
+ * - 후속: `dependencies`, `inspect`, `pack`, `submit` 명령 모듈로 위임한다.
  *
  * 데이터·부수효과:
  * - `package.json`, 설정, source metadata를 읽고 결과를 출력한다.
@@ -17,6 +17,7 @@
 
 import { readFileSync } from "node:fs";
 
+import { runDependencies } from "./commands/dependencies.js";
 import { runInspect } from "./commands/inspect.js";
 import { runPack } from "./commands/pack.js";
 import { runSubmit } from "./commands/submit.js";
@@ -30,6 +31,7 @@ Usage:
   buildpouch --version
 
 Commands:
+  dependencies Check resolved dependencies without installing packages.
   inspect    Calculate and validate a build context.
   pack       Create a validated build context archive.
   submit     Submit an archive to a build provider.
@@ -65,6 +67,10 @@ async function run(args: string[]): Promise<number> {
 
   if (firstArgument === "inspect") {
     return runInspect(args.slice(1));
+  }
+
+  if (firstArgument === "dependencies") {
+    return runDependencies(args.slice(1));
   }
 
   if (firstArgument === "pack") {
