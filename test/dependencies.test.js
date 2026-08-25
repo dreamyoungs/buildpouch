@@ -27,6 +27,7 @@ function options(lockfile, loadMetadata, extra = {}) {
     "registry": "https://registry.npmjs.org/",
     "allowInstallScripts": new Set(),
     "allowNewPackages": new Set(),
+    "allowReleaseAges": new Set(),
     "checkedAt": new Date("2026-08-25T00:00:00.000Z"),
     loadMetadata,
     ...extra
@@ -81,12 +82,13 @@ test("detects new pnpm package names and lifecycle scripts against a baseline", 
 test("accepts exact allowances while still checking registry integrity", async (t) => {
   const lockfile = `lockfileVersion: '9.0'\nimporters:\n  .:\n    dependencies:\n      helper: {specifier: 1.0.0, version: 1.0.0}\npackages:\n  helper@1.0.0:\n    resolution: {integrity: sha512-helper}\nsnapshots:\n  helper@1.0.0: {}\n`;
   const directory = await fixture(t, { "baseline.yaml": `lockfileVersion: '9.0'\nimporters: {.: {}}\npackages: {}\nsnapshots: {}\n`, "pnpm-lock.yaml": lockfile });
-  const loadMetadata = metadata({ "helper": { "time": { "1.0.0": oldTime }, "versions": { "1.0.0": { "dist": { "integrity": "sha512-helper" }, "scripts": { "install": "node setup.js" } } } } });
+  const loadMetadata = metadata({ "helper": { "time": { "1.0.0": newTime }, "versions": { "1.0.0": { "dist": { "integrity": "sha512-helper" }, "scripts": { "install": "node setup.js" } } } } });
 
   const result = await checkDependencies(options(join(directory, "pnpm-lock.yaml"), loadMetadata, {
     "baselineLockfile": join(directory, "baseline.yaml"),
     "allowInstallScripts": new Set(["helper@1.0.0"]),
-    "allowNewPackages": new Set(["helper@1.0.0"])
+    "allowNewPackages": new Set(["helper@1.0.0"]),
+    "allowReleaseAges": new Set(["helper@1.0.0"])
   }));
 
   assert.equal(result.ok, true);

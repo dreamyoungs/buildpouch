@@ -115,14 +115,15 @@ npx buildpouch submit --config buildpouch.yaml --archive customer-api.context.ta
 
 `inspect`はmetadataだけを読み取ります。ファイルをステージングしたりプロバイダーへ接続したりせず、すべてのsource→target mapping、各ファイルサイズ、ファイル数、合計サイズを表示します。
 
-`dependencies check`はnpm `package-lock.json` lockfile version 3とpnpm lockfile version 9をサポートします。推移的依存関係を含む全resolved graphをnpm互換registry metadataと照合します。公開から必要時間が経過していない、公開時刻・integrityがない、registry integrityが一致しない、許可されていないlifecycle script・registry外sourceがある、または`--baseline-lockfile`にないパッケージ名が現れた場合はfail closedします。繰り返し指定できる`--allow-install-script`と`--allow-new-package`は正確な`name@version`だけを例外にします。JSON結果には違反パッケージへの最短dependency pathが含まれます。このコマンドはパッケージmetadataだけを読み、パッケージをインストールまたは実行しません。
+`dependencies check`はnpm `package-lock.json` lockfile version 3とpnpm lockfile version 9をサポートします。推移的依存関係を含む全resolved graphをnpm互換registry metadataと照合します。公開から必要時間が経過していない、公開時刻・integrityがない、registry integrityが一致しない、許可されていないlifecycle script・registry外sourceがある、または`--baseline-lockfile`にないパッケージ名が現れた場合はfail closedします。繰り返し指定できる`--allow-install-script`、`--allow-new-package`、`--allow-release-age`は正確な`name@version`だけを例外にします。JSON結果には違反パッケージへの最短dependency pathが含まれます。このコマンドはパッケージmetadataだけを読み、パッケージをインストールまたは実行しません。
 
 ```sh
 buildpouch dependencies check \
   --lockfile pnpm-lock.yaml \
   --baseline-lockfile trusted-pnpm-lock.yaml \
   --minimum-release-age 7d \
-  --allow-install-script nx@23.1.1
+  --allow-install-script nx@23.1.1 \
+  --allow-release-age buildpouch@0.2.0
 ```
 
 `pack`は同じ検証を再度行い、選択されたファイルを分離された一時ディレクトリにコピーして、ポータブルなgzip圧縮tarアーカイブを作成します。デフォルトの出力先は、現在のディレクトリにある`<context.name>.context.tar.gz`です。`--force`を指定しない限り既存のアーカイブは保持されます。コマンド終了後にステージングディレクトリを確認する必要がある場合のみ、`--keep-context`を使用してください。

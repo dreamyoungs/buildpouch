@@ -18,6 +18,7 @@ Options:
   --registry <url>                  HTTPS npm-compatible registry (default: https://registry.npmjs.org/).
   --allow-install-script <selector> Allow lifecycle scripts for one exact name@version; repeatable.
   --allow-new-package <selector>    Allow one new exact name@version; repeatable.
+  --allow-release-age <selector>    Allow one exact name@version before the minimum age; repeatable.
   --json                            Print a machine-readable result.
   -h, --help                        Show this help message.
 `;
@@ -25,6 +26,7 @@ Options:
 interface CommandOptions {
   "allowInstallScripts": Set<string>;
   "allowNewPackages": Set<string>;
+  "allowReleaseAges": Set<string>;
   "help": boolean;
   "json": boolean;
   "minimumReleaseAgeHours": number;
@@ -53,7 +55,7 @@ function parseOptions(args: string[]): CommandOptions {
     throw new BuildPouchError("INVALID_ARGUMENT", "dependencies requires the check subcommand.");
   }
   const options: CommandOptions = {
-    "allowInstallScripts": new Set(), "allowNewPackages": new Set(), "help": false, "json": false,
+    "allowInstallScripts": new Set(), "allowNewPackages": new Set(), "allowReleaseAges": new Set(), "help": false, "json": false,
     "minimumReleaseAgeHours": 168, "registry": "https://registry.npmjs.org/"
   };
   const start = args[0] === "check" ? 1 : 0;
@@ -61,7 +63,7 @@ function parseOptions(args: string[]): CommandOptions {
     const argument = args[index];
     if (argument === "--help" || argument === "-h") options.help = true;
     else if (argument === "--json") options.json = true;
-    else if (["--lockfile", "--baseline-lockfile", "--minimum-release-age", "--registry", "--allow-install-script", "--allow-new-package"].includes(argument ?? "")) {
+    else if (["--lockfile", "--baseline-lockfile", "--minimum-release-age", "--registry", "--allow-install-script", "--allow-new-package", "--allow-release-age"].includes(argument ?? "")) {
       const optionValue = value(args, index, argument ?? "");
       index += 1;
       if (argument === "--lockfile") options.lockfile = optionValue;
@@ -73,7 +75,8 @@ function parseOptions(args: string[]): CommandOptions {
         options.registry = registry.href;
       } else if (optionValue.lastIndexOf("@") <= 0 || optionValue.endsWith("@")) throw new BuildPouchError("INVALID_ARGUMENT", `${argument} requires an exact name@version selector.`);
       else if (argument === "--allow-install-script") options.allowInstallScripts.add(optionValue);
-      else options.allowNewPackages.add(optionValue);
+      else if (argument === "--allow-new-package") options.allowNewPackages.add(optionValue);
+      else options.allowReleaseAges.add(optionValue);
     } else throw new BuildPouchError("INVALID_ARGUMENT", `Unknown dependencies option: ${argument ?? ""}.`);
   }
   return options;
@@ -116,6 +119,7 @@ export async function runDependencies(args: string[]): Promise<number> {
     "registry": options.registry,
     "allowInstallScripts": options.allowInstallScripts,
     "allowNewPackages": options.allowNewPackages,
+    "allowReleaseAges": options.allowReleaseAges,
     ...(options.baselineLockfile === undefined ? {} : { "baselineLockfile": options.baselineLockfile })
   });
   process.stdout.write(options.json ? `${JSON.stringify(result, null, 2)}\n` : human(result));

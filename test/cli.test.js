@@ -37,6 +37,7 @@ test("shows help for every implemented command", () => {
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /Usage:\n  buildpouch/);
   }
+  assert.match(results[0].stdout, /--allow-release-age <selector>/);
 });
 
 test("fails clearly for an unknown command", () => {

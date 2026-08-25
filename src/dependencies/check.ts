@@ -68,6 +68,7 @@ export interface DependencyCheckOptions {
   "registry": string;
   "allowInstallScripts": Set<string>;
   "allowNewPackages": Set<string>;
+  "allowReleaseAges": Set<string>;
   "baselineLockfile"?: string;
   "checkedAt"?: Date;
   "loadMetadata"?: (name: string) => Promise<PackageMetadata>;
@@ -292,7 +293,7 @@ export async function checkDependencies(options: DependencyCheckOptions): Promis
       addViolation(node, "PUBLISH_TIME_MISSING", "Registry metadata has no valid publication time for this version.");
     } else {
       const ageHours = (checkedAt.getTime() - Date.parse(publishedAt)) / 3_600_000;
-      if (ageHours < options.minimumReleaseAgeHours) {
+      if (ageHours < options.minimumReleaseAgeHours && !options.allowReleaseAges.has(node.selector)) {
         addViolation(node, "RELEASE_TOO_NEW", `Version is ${Math.max(0, ageHours).toFixed(1)} hours old; ${options.minimumReleaseAgeHours} hours are required.`);
       }
     }
