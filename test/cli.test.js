@@ -31,7 +31,7 @@ test("prints the package version", () => {
 });
 
 test("shows help for every implemented command", () => {
-  const results = ["inspect", "pack", "submit"].map((command) => runCli([command, "--help"]));
+  const results = ["dependencies", "inspect", "pack", "submit"].map((command) => runCli([command, "--help"]));
 
   for (const result of results) {
     assert.equal(result.status, 0, result.stderr);

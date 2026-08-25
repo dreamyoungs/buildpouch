@@ -86,6 +86,7 @@ Context creation and provider submission remain separate stages so that failures
 
 | Command | Status | Responsibility |
 | --- | --- | --- |
+| `buildpouch dependencies check` | Available | Inspect every resolved npm or pnpm dependency without installing packages and block policy violations. |
 | `buildpouch inspect` | Available | Calculate and validate the context without copying files or contacting a cloud provider. |
 | `buildpouch pack` | Available | Stage the validated files in a temporary directory and create a `tar.gz` archive. |
 | `buildpouch submit` | Available | Pack a context, or accept an existing archive, and submit it through the configured provider. |
@@ -98,6 +99,7 @@ Command shape:
 buildpouch inspect --config buildpouch.yaml
 buildpouch pack --config buildpouch.yaml
 buildpouch submit --config buildpouch.yaml --target gcp-development
+buildpouch dependencies check --lockfile pnpm-lock.yaml --minimum-release-age 7d
 ```
 
 After installing BuildPouch in a project, run commands through `npx`:
@@ -112,6 +114,16 @@ npx buildpouch submit --config buildpouch.yaml --archive customer-api.context.ta
 ```
 
 `inspect` reads metadata only. It reports every source-to-target mapping, individual file size, file count, and total size without staging files or contacting a provider.
+
+`dependencies check` supports npm `package-lock.json` lockfile version 3 and pnpm lockfile version 9. It checks the complete resolved graph against npm-compatible registry metadata, including transitive dependencies. The command fails closed when a release is too new, publication time or integrity is missing, registry integrity differs, lifecycle scripts are not explicitly allowed, a non-registry source appears, or a package name is new relative to `--baseline-lockfile`. Exact `name@version` allowances are available through repeatable `--allow-install-script` and `--allow-new-package` options. JSON output includes a shortest known dependency path for every violation. The command reads package metadata but never installs or executes package code.
+
+```sh
+buildpouch dependencies check \
+  --lockfile pnpm-lock.yaml \
+  --baseline-lockfile trusted-pnpm-lock.yaml \
+  --minimum-release-age 7d \
+  --allow-install-script nx@23.1.1
+```
 
 `pack` repeats the same validation, copies the selected files into an isolated temporary directory, and writes a portable gzip-compressed tar archive. The default output is `<context.name>.context.tar.gz` in the current directory. Existing archives are preserved unless `--force` is supplied. Use `--keep-context` only when you need to inspect the staging directory after the command finishes.
 

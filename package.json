@@ -1,6 +1,6 @@
 {
   "name": "buildpouch",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Pack only what your build needs — create safe, minimal build contexts for monorepos and submit them to build providers.",
   "keywords": [
     "build-context",
