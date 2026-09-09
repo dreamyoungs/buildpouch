@@ -40,6 +40,8 @@ Contributions are welcome whether they are written by people, assisted by AI, or
 
 ## Local development
 
+For questions about implementation, configuration, providers, or repository ownership, start with the [contributor source map](docs/index.md). Agent-specific working rules are in [AGENTS.md](AGENTS.md).
+
 BuildPouch currently requires Node.js 24 and npm 11.12.1.
 
 ```sh
