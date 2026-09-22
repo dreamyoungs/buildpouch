@@ -357,7 +357,8 @@ export function createNcpNksBuildkitProvider(dependencies: NcpProviderDependenci
           "BUILDPOUCH_CONTEXT_SHA256": digest,
           "BUILDPOUCH_CONTEXT_SIZE": String(archiveMetadata.size),
           "BUILDPOUCH_SUBMISSION_ID": submissionId,
-          "BUILDPOUCH_TARGET": targetName
+          "BUILDPOUCH_TARGET": targetName,
+          ...(request.scanPolicy === undefined ? {} : { "BUILDPOUCH_SCAN_POLICY": JSON.stringify(request.scanPolicy) })
         }
       });
 

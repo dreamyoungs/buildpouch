@@ -214,6 +214,27 @@ targets:
 
 Google Cloud Buildの相対的な`config`パスは設定ファイルのディレクトリを基準に解決されます。`--build-config`の上書きは現在の作業ディレクトリを基準に解決されます。ユーザー定義のCloud Build substitution keyは`_`で始まり、大文字、数字、underscoreのみを含める必要があります。Substitutionの値はコマンド出力に表示されるため、secretをsubstitutionとして渡さず、build configurationを通じてSecret Managerを使用してください。
 
+### 任意のイメージ脆弱性スキャン
+
+既存の設定を維持したまま、任意のポリシーを追加できます。
+
+```yaml
+security:
+  vulnerabilityScan:
+    mode: auto
+    scanner: trivy
+    failOnSeverities: [HIGH, CRITICAL]
+    maxDbAgeHours: 24
+```
+
+この版では `auto` と `always` のどちらも新しいスキャンを実行します。信頼できる再利用証拠の契約が未定のため、キャッシュ結果を合格根拠にしません。`skip` には空でない `reason` と、信頼された実行環境の開発用許可が必要です。`skip` にも上記四つのスキャン項目を明記します。重大度と DB の最大経過時間はプロジェクトが指定し、BuildPouch の固定値ではありません。`security` のない設定では scanner は不要です。
+
+イメージをビルドして push した後、信頼された実行ステップで `buildpouch security verify --config buildpouch.yaml --trusted-policy /runner/policy.json --image registry.example.test/app@sha256:<64桁のdigest> --json` を実行します。ポリシー JSON の例は `{"schemaVersion":1,"environmentClass":"protected","allowSkip":false}` です。開発用の例外には `environmentClass: "development"`、`allowSkip: true`、`mode: skip`、理由が必要です。実行側はポリシーファイル、呼び出し、イメージ digest、Trivy 実行ファイルと環境、検証する設定 revision を提出者が変更できないよう管理し、検証失敗でビルドを失敗させ、検証した同じ digest をデプロイする必要があります。提出者が指定したファイルパスだけでは信頼できません。
+
+検証器は単独実行の Trivy を直接実行し、提出者が作成した合格 report を受け取りません。digest 固定のイメージ、Trivy 結果の `ArtifactName` と `RepoDigests`、スキャン時刻、隔離した同じキャッシュの `trivy version --format json` による DB metadata を確認します。識別できた client/server の結果は別のサーバー DB 契約が必要なため拒否します。証拠の欠落、期限切れ、古い DB、scanner 障害、遮断対象の脆弱性は失敗します。イメージ config ID を registry manifest digest とみなさず、一致する `RepoDigests` がない結果も失敗します。結果の保存や再利用は行いません。
+
+設定したポリシーは GCP の `_BUILDPOUCH_SCAN_POLICY` substitution または NCP Job の `BUILDPOUCH_SCAN_POLICY` 環境変数として渡されます。これらは実行側への入力ヒントであり、合格証拠や自動 gate ではありません。利用するリポジトリが Cloud Build 設定または Job template に信頼された検証ステップを追加する必要があります。`submit` の成功は provider ビルドの成功のみを示します。既存の `dependencies check` とアプリのテストは独立して維持されます。
+
 ### NCP NKS BuildKit target
 
 `ncp-nks-buildkit`プロバイダーは、BuildPouchのarchive-first契約を維持しながらNCPサービスを使用します。

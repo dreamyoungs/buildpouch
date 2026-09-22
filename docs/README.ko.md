@@ -214,6 +214,27 @@ Entry 목록은 source allowlist를 구성합니다. 각 entry는 `context.root`
 
 Google Cloud Build의 상대 `config` 경로는 설정 파일이 있는 디렉터리를 기준으로 해석합니다. `--build-config` override는 현재 작업 디렉터리를 기준으로 해석합니다. 사용자 정의 Cloud Build substitution key는 `_`로 시작하고 대문자, 숫자와 underscore만 포함해야 합니다. Substitution 값은 명령 출력에 표시되므로 secret을 substitution으로 전달하지 말고 build configuration을 통해 Secret Manager를 사용하세요.
 
+### 선택적 이미지 취약점 검사
+
+기존 설정과 호환되는 선택적 정책을 추가할 수 있습니다.
+
+```yaml
+security:
+  vulnerabilityScan:
+    mode: auto
+    scanner: trivy
+    failOnSeverities: [HIGH, CRITICAL]
+    maxDbAgeHours: 24
+```
+
+이번 버전에서 `auto`와 `always`는 모두 새 검사를 실행합니다. 신뢰할 재사용 증거 계약이 없어 캐시 결과를 통과 근거로 사용하지 않습니다. `skip`에는 비어 있지 않은 `reason`과 신뢰된 실행 환경의 개발 허용 정책이 필요합니다. `skip`에도 위 네 검사 필드를 명시해야 합니다. 심각도와 DB 최대 나이는 프로젝트가 정하며 BuildPouch의 강제 기본값이 아닙니다. 설정에 `security`가 없으면 scanner가 필요하지 않습니다.
+
+이미지를 빌드하고 push한 뒤 신뢰된 실행 단계에서 `buildpouch security verify --config buildpouch.yaml --trusted-policy /runner/policy.json --image registry.example.test/app@sha256:<64자리 digest> --json`을 실행합니다. 정책 JSON의 예는 `{"schemaVersion":1,"environmentClass":"protected","allowSkip":false}`입니다. 개발 환경 예외는 `environmentClass: "development"`, `allowSkip: true`, `mode: skip`, 사유를 모두 요구합니다. 실행자는 정책 파일, 명령, 이미지 digest, Trivy 실행 파일·환경, 검증할 설정 revision을 제출자가 바꿀 수 없게 관리하고, 검증 실패 시 빌드를 실패 처리하며, 검증한 동일 digest를 배포해야 합니다. 제출자가 지정한 파일 경로 자체는 신뢰 근거가 아닙니다.
+
+검증기는 독립 실행 Trivy를 직접 실행하며 제출자가 만든 통과 report를 받지 않습니다. digest로 고정한 이미지, Trivy 결과의 `ArtifactName`·`RepoDigests`, 검사 시각, 격리된 동일 캐시의 `trivy version --format json` DB metadata를 확인합니다. 확인된 client/server 결과는 별도 서버 DB 계약이 필요하므로 거부합니다. 증거 누락·만료·오래된 DB·scanner 실패·차단 대상 취약점은 실패합니다. 이미지 config ID를 registry manifest digest로 취급하지 않으며, 일치하는 `RepoDigests`가 없는 결과도 실패합니다. 검사 결과를 저장하거나 재사용하지 않습니다.
+
+설정된 정책은 GCP의 `_BUILDPOUCH_SCAN_POLICY` substitution 또는 NCP Job의 `BUILDPOUCH_SCAN_POLICY` 환경 변수로 전달됩니다. 이는 실행 측 입력 힌트이며 통과 증거나 자동 gate가 아닙니다. 소비 저장소가 Cloud Build 설정 또는 Job template에 신뢰된 검증 단계를 넣어야 합니다. `submit` 성공은 provider 빌드 성공만 뜻합니다. 기존 `dependencies check`와 앱 테스트는 별개로 유지됩니다.
+
 ### NCP NKS BuildKit target
 
 `ncp-nks-buildkit` 프로바이더는 BuildPouch의 archive-first 계약을 유지하면서 NCP 서비스를 사용합니다.

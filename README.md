@@ -216,6 +216,35 @@ The examples use `buildpouch.yaml`, but the YAML parser also accepts JSON syntax
 
 Relative Google Cloud Build `config` paths are resolved from the configuration file directory. A `--build-config` override is resolved from the current working directory. User-defined Cloud Build substitution keys must begin with `_` and contain only uppercase letters, numbers, and underscores. Substitution values appear in command output; use Secret Manager through the build configuration instead of passing secrets as substitutions.
 
+### Optional image vulnerability scan
+
+An opt-in `security` section adds an image scan policy without changing existing configurations:
+
+```yaml
+security:
+  vulnerabilityScan:
+    mode: auto
+    scanner: trivy
+    failOnSeverities: [HIGH, CRITICAL]
+    maxDbAgeHours: 24
+```
+
+`auto` and `always` both run a fresh scan in this release. Reuse needs a separate trusted evidence store and identity contract, so there is no cache-based bypass. `skip` requires `reason` and a runner-owned development policy that allows it. All four scan fields are required even for `skip`; the severity list and DB age are explicit project policy, not BuildPouch defaults. The optional scanner adapter uses a `trivy` executable available in the build runner. No scanner is required for configurations without `security`.
+
+After producing and pushing an image, a trusted build step can run:
+
+```sh
+buildpouch security verify --config buildpouch.yaml \
+  --trusted-policy /runner/policy.json \
+  --image registry.example.test/app@sha256:<64-hex-digest> --json
+```
+
+The runner policy is JSON, for example `{"schemaVersion":1,"environmentClass":"protected","allowSkip":false}`. A development skip uses `environmentClass: "development"`, `allowSkip: true`, and `mode: skip` with a nonempty `reason` in BuildPouch configuration. The build executor must control this file, the CLI invocation, the image digest, the Trivy executable and environment, and the configuration revision used for verification. A path supplied by a submitter is not itself trusted. The runner must fail the build if `security verify` fails, and deploy the same digest that it verified.
+
+The verifier invokes standalone Trivy itself and accepts no submitter-provided pass report. It requires a digest-pinned image reference, a matching Trivy `ArtifactName` and `RepoDigests` entry, a valid scan time, and `trivy version --format json` vulnerability DB metadata from the same isolated cache. Client/server reports require a separate server DB contract and are rejected when identified. Missing, expired, or stale DB metadata, scanner failure, invalid report shape, or configured blocking vulnerabilities fail closed. The report's image config ID is not treated as the registry manifest digest. This first adapter supports digest-pinned registry images; reports without matching `RepoDigests` fail. The verifier returns `PASS` or `SKIPPED`, including the skip reason. It does not store or reuse evidence.
+
+For configured scans, GCP submissions include the policy as reserved `_BUILDPOUCH_SCAN_POLICY`; NCP Jobs receive `BUILDPOUCH_SCAN_POLICY`. Users cannot set the reserved GCP key through substitutions. These values are delivery hints, not trusted proof or an automatic build gate. The consuming repository must add the trusted verifier step to its Cloud Build config or Job template. `submit` success only reports provider build success. The existing `dependencies check` policy and other application tests remain independent.
+
 ### NCP NKS BuildKit target
 
 The `ncp-nks-buildkit` provider keeps BuildPouch's archive-first contract while using NCP services:
