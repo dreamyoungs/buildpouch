@@ -23,7 +23,7 @@ function runner(options = {}) {
     calls.push(request);
     if (request.args[0] === "image") {
       return {
-        "code": options.scanCode ?? 0, "signal": null, "stderr": "",
+        "code": options.scanCode ?? 0, "signal": null, "stderr": options.scanStderr ?? "",
         "stdout": JSON.stringify({
           "SchemaVersion": 2, "CreatedAt": now.toISOString(), "ArtifactType": "container_image",
           ...(options.server === undefined ? {} : { "Trivy": { "Server": options.server } }),
@@ -130,6 +130,29 @@ test("scan cancellation aborts the runner and returns a cancellation error", asy
     controller.abort();
     throw new Error("aborted");
   }, now, controller.signal), { "code": "USER_CANCELLATION" });
+});
+
+test("Trivy-specific environment overrides are removed before scanning", async (t) => {
+  const previous = process.env.TRIVY_IGNORE_UNFIXED;
+  process.env.TRIVY_IGNORE_UNFIXED = "true";
+  t.after(() => {
+    if (previous === undefined) delete process.env.TRIVY_IGNORE_UNFIXED;
+    else process.env.TRIVY_IGNORE_UNFIXED = previous;
+  });
+  const mock = runner();
+  await verifySecurity(policy, protectedPolicy, image, mock.run, now);
+  assert.equal(mock.calls[0].env.TRIVY_IGNORE_UNFIXED, undefined);
+  assert.equal(mock.calls[1].env.TRIVY_IGNORE_UNFIXED, undefined);
+});
+
+test("scan failure reports a safe category without copying scanner stderr", async () => {
+  const mock = runner({ "scanCode": 1, "scanStderr": "x509: certificate signed by unknown authority token=private-value" });
+  await assert.rejects(verifySecurity(policy, protectedPolicy, image, mock.run, now), (error) => {
+    assert.equal(error.code, "SECURITY_SCAN_FAILED");
+    assert.match(error.message, /TLS certificate verification failed/);
+    assert.doesNotMatch(error.message, /private-value/);
+    return true;
+  });
 });
 
 test("GCP submission passes policy separately from user substitutions", () => {

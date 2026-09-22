@@ -56,6 +56,18 @@ function timestamp(value: unknown, label: string): number {
   return parsed;
 }
 
+function scanFailureMessage(stderr: string, phase: "image scan" | "database query"): string {
+  let cause = "unknown cause";
+  if (/x509:|certificate verify failed|unknown authority/i.test(stderr)) cause = "TLS certificate verification failed";
+  else if (/unauthorized|authentication required|access denied|forbidden/i.test(stderr)) cause = "registry authentication failed";
+  else if (/timeout|connection refused|no such host|network is unreachable/i.test(stderr)) cause = "network request failed";
+  return `Trivy ${phase} failed: ${cause}.`;
+}
+
+function trivyEnvironment(): NodeJS.ProcessEnv {
+  return Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.toUpperCase().startsWith("TRIVY_")));
+}
+
 export function parseTrustedSecurityPolicy(source: string): TrustedSecurityPolicy {
   const policy = parseJson(source, "Trusted security policy");
   const keys = Object.keys(policy);
@@ -95,6 +107,7 @@ export async function verifySecurity(
 
   const directory = await mkdtemp(join(tmpdir(), "buildpouch-scan-"));
   try {
+    const env = trivyEnvironment();
     const emptyConfig = join(directory, "trivy.yaml");
     const emptyIgnore = join(directory, "ignore");
     const cache = join(directory, "cache");
@@ -102,12 +115,13 @@ export async function verifySecurity(
     await writeFile(emptyIgnore, "", { "mode": 0o600 });
     const scan = await runner({
       "executable": "trivy",
+      env,
       "args": ["image", "--config", emptyConfig, "--ignorefile", emptyIgnore, "--cache-dir", cache,
         "--scanners", "vuln", "--severity", "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL", "--format", "json", "--exit-code", "0", image],
       ...(signal === undefined ? {} : { signal })
     });
     if (scan.code !== 0 || scan.signal !== null) {
-      throw new BuildPouchError("SECURITY_SCAN_FAILED", "Trivy image scan failed.");
+      throw new BuildPouchError("SECURITY_SCAN_FAILED", scanFailureMessage(scan.stderr, "image scan"));
     }
     const report = parseJson(scan.stdout, "Trivy image report");
     if (report.Trivy !== undefined && record(report.Trivy, "Trivy report provenance").Server !== undefined) {
@@ -140,11 +154,12 @@ export async function verifySecurity(
     }
     const versionResult = await runner({
       "executable": "trivy",
+      env,
       "args": ["version", "--config", emptyConfig, "--cache-dir", cache, "--format", "json"],
       ...(signal === undefined ? {} : { signal })
     });
     if (versionResult.code !== 0 || versionResult.signal !== null) {
-      throw new BuildPouchError("SECURITY_SCAN_FAILED", "Trivy version and database query failed.");
+      throw new BuildPouchError("SECURITY_SCAN_FAILED", scanFailureMessage(versionResult.stderr, "database query"));
     }
     const version = parseJson(versionResult.stdout, "Trivy version report");
     const database = record(version.VulnerabilityDB, "Trivy vulnerability database metadata");

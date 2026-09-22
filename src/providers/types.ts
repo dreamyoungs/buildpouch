@@ -7,6 +7,7 @@ import type { VulnerabilityScanPolicy } from "../config/types.js";
 export interface ProcessRequest {
   "executable": string;
   "args": string[];
+  "env"?: NodeJS.ProcessEnv;
   "input"?: string;
   "signal"?: AbortSignal;
   "onStderr"?: (chunk: string) => void;

@@ -503,3 +503,13 @@ test("process runner writes optional stdin without enabling a shell", async () =
   assert.equal(result.code, 0, result.stderr);
   assert.equal(result.stdout, "MANIFEST INPUT");
 });
+
+test("process runner honors an explicit child environment", async () => {
+  const result = await runProcess({
+    "executable": process.execPath,
+    "args": ["-e", "process.stdout.write(process.env.BUILDPOUCH_TEST_VALUE ?? 'missing')"],
+    "env": { "PATH": process.env.PATH, "BUILDPOUCH_TEST_VALUE": "controlled" }
+  });
+  assert.equal(result.code, 0, result.stderr);
+  assert.equal(result.stdout, "controlled");
+});
