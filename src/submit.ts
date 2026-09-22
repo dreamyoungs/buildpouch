@@ -270,6 +270,7 @@ export async function submitContext(loaded: LoadedConfig, options: SubmitOptions
         "project": prepared.provider.project,
         "region": prepared.provider.region,
         "substitutions": prepared.provider.substitutions,
+        ...(loaded.config.security === undefined ? {} : { "scanPolicy": loaded.config.security.vulnerabilityScan }),
         ...(options.signal === undefined ? {} : { "signal": options.signal }),
         ...(options.onProviderStderr === undefined ? {} : { "onStderr": options.onProviderStderr })
       });
@@ -291,6 +292,7 @@ export async function submitContext(loaded: LoadedConfig, options: SubmitOptions
         "timeoutSeconds": prepared.provider.timeoutSeconds,
         "pollIntervalSeconds": prepared.provider.pollIntervalSeconds,
         "variables": selectedBuild.options.variables,
+        ...(loaded.config.security === undefined ? {} : { "scanPolicy": loaded.config.security.vulnerabilityScan }),
         ...(options.signal === undefined ? {} : { "signal": options.signal }),
         ...(options.onProviderStderr === undefined ? {} : { "onStderr": options.onProviderStderr })
       });

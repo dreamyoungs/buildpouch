@@ -53,12 +53,25 @@ export interface NcpNksBuildkitTarget {
 
 export type BuildTargetConfig = GcpCloudBuildTarget | NcpNksBuildkitTarget;
 
+export interface VulnerabilityScanPolicy {
+  "mode": "auto" | "always" | "skip";
+  "scanner": "trivy";
+  "failOnSeverities": ("UNKNOWN" | "LOW" | "MEDIUM" | "HIGH" | "CRITICAL")[];
+  "maxDbAgeHours": number;
+  "reason"?: string;
+}
+
+export interface SecurityConfig {
+  "vulnerabilityScan": VulnerabilityScanPolicy;
+}
+
 export interface BuildPouchConfig {
   "schemaVersion": 1;
   "context": ContextConfig;
   "build"?: BuildConfig;
   "defaultTarget"?: string;
   "targets": Record<string, BuildTargetConfig>;
+  "security"?: SecurityConfig;
 }
 
 export interface LoadedConfig {

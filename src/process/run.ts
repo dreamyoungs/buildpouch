@@ -16,6 +16,7 @@ export async function runProcess(request: ProcessRequest): Promise<ProcessResult
   return new Promise((resolve, reject) => {
     const child = spawn(request.executable, request.args, {
       "shell": false,
+      ...(request.env === undefined ? {} : { "env": request.env }),
       "signal": request.signal,
       "stdio": [request.input === undefined ? "ignore" : "pipe", "pipe", "pipe"]
     });

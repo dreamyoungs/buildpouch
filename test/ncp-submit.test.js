@@ -111,6 +111,26 @@ test("NCP command builders keep endpoints, paths, and contexts as argument array
   ]);
 });
 
+test("NCP forwards the optional scan policy into reserved Job metadata", async (t) => {
+  const fixture = await createFixture(t);
+  let manifest;
+  const scanPolicy = { "mode": "always", "scanner": "trivy", "failOnSeverities": ["CRITICAL"], "maxDbAgeHours": 24 };
+  const provider = createNcpNksBuildkitProvider({
+    "runner": async (request) => {
+      if (request.executable === "aws") return { "code": 0, "signal": null, "stdout": "", "stderr": "" };
+      if (request.args.includes("create")) {
+        manifest = JSON.parse(request.input);
+        return { "code": 0, "signal": null, "stdout": jobResponse(manifest.metadata.name, { "succeeded": 1 }), "stderr": "" };
+      }
+      throw new Error("unexpected command");
+    },
+    "createId": () => "scan-policy-id"
+  });
+  await provider.submit(createRequest(fixture, { scanPolicy }));
+  const environment = manifest.spec.template.spec.containers[0].env;
+  assert.deepEqual(JSON.parse(environment.find((entry) => entry.name === "BUILDPOUCH_SCAN_POLICY").value), scanPolicy);
+});
+
 test("NCP manifest injection preserves the runner template and replaces reserved metadata", async (t) => {
   const fixture = await createFixture(t);
   const source = await (await import("node:fs/promises")).readFile(fixture.jobTemplate, "utf8");
@@ -482,4 +502,14 @@ test("process runner writes optional stdin without enabling a shell", async () =
 
   assert.equal(result.code, 0, result.stderr);
   assert.equal(result.stdout, "MANIFEST INPUT");
+});
+
+test("process runner honors an explicit child environment", async () => {
+  const result = await runProcess({
+    "executable": process.execPath,
+    "args": ["-e", "process.stdout.write(process.env.BUILDPOUCH_TEST_VALUE ?? 'missing')"],
+    "env": { "PATH": process.env.PATH, "BUILDPOUCH_TEST_VALUE": "controlled" }
+  });
+  assert.equal(result.code, 0, result.stderr);
+  assert.equal(result.stdout, "controlled");
 });

@@ -25,7 +25,8 @@ import type {
   ContextEntry,
   GcpCloudBuildOptions,
   LoadedConfig,
-  NcpNksBuildkitOptions
+  NcpNksBuildkitOptions,
+  SecurityConfig
 } from "./types.js";
 
 type UnknownRecord = Record<string, unknown>;
@@ -274,9 +275,43 @@ function parseTargets(value: unknown): Record<string, BuildTargetConfig> {
   return targets;
 }
 
+function parseSecurity(value: unknown): SecurityConfig {
+  const security = expectRecord(value, "security");
+  expectKeys(security, ["vulnerabilityScan"], "security");
+  const scan = expectRecord(security.vulnerabilityScan, "security.vulnerabilityScan");
+  expectKeys(scan, ["mode", "scanner", "failOnSeverities", "maxDbAgeHours", "reason"], "security.vulnerabilityScan");
+  if (scan.mode !== "auto" && scan.mode !== "always" && scan.mode !== "skip") {
+    configurationError('security.vulnerabilityScan.mode must be "auto", "always", or "skip".');
+  }
+  if (scan.scanner !== "trivy") {
+    configurationError('security.vulnerabilityScan.scanner must be "trivy".');
+  }
+  if (!Array.isArray(scan.failOnSeverities) || scan.failOnSeverities.length === 0 ||
+      scan.failOnSeverities.some((severity) => !["UNKNOWN", "LOW", "MEDIUM", "HIGH", "CRITICAL"].includes(severity)) ||
+      new Set(scan.failOnSeverities).size !== scan.failOnSeverities.length) {
+    configurationError("security.vulnerabilityScan.failOnSeverities must be a non-empty list of distinct severities.");
+  }
+  const maxDbAgeHours = expectInteger(scan.maxDbAgeHours, "security.vulnerabilityScan.maxDbAgeHours", 1, 168);
+  if (scan.mode === "skip" && scan.reason === undefined) {
+    configurationError("security.vulnerabilityScan.reason is required for skip.");
+  }
+  if (scan.mode !== "skip" && scan.reason !== undefined) {
+    configurationError("security.vulnerabilityScan.reason is only allowed for skip.");
+  }
+  return {
+    "vulnerabilityScan": {
+      "mode": scan.mode,
+      "scanner": "trivy",
+      "failOnSeverities": scan.failOnSeverities,
+      "maxDbAgeHours": maxDbAgeHours,
+      ...(scan.reason === undefined ? {} : { "reason": expectString(scan.reason, "security.vulnerabilityScan.reason") })
+    }
+  };
+}
+
 function parseConfiguration(value: unknown): BuildPouchConfig {
   const configuration = expectRecord(value, "configuration");
-  expectKeys(configuration, ["schemaVersion", "context", "build", "defaultTarget", "targets"], "configuration");
+  expectKeys(configuration, ["schemaVersion", "context", "build", "defaultTarget", "targets", "security"], "configuration");
 
   if (configuration.schemaVersion !== 1) {
     configurationError("schemaVersion must be 1.");
@@ -290,6 +325,10 @@ function parseConfiguration(value: unknown): BuildPouchConfig {
 
   if (configuration.build !== undefined) {
     result.build = parseBuild(configuration.build);
+  }
+
+  if (configuration.security !== undefined) {
+    result.security = parseSecurity(configuration.security);
   }
 
   if (configuration.defaultTarget !== undefined) {

@@ -2,9 +2,12 @@
  * build provider와 외부 process runner 사이의 최소 공개 계약을 정의한다.
  */
 
+import type { VulnerabilityScanPolicy } from "../config/types.js";
+
 export interface ProcessRequest {
   "executable": string;
   "args": string[];
+  "env"?: NodeJS.ProcessEnv;
   "input"?: string;
   "signal"?: AbortSignal;
   "onStderr"?: (chunk: string) => void;
@@ -25,6 +28,7 @@ export interface ProviderSubmitRequest {
   "targetName"?: string;
   "signal"?: AbortSignal;
   "onStderr"?: (chunk: string) => void;
+  "scanPolicy"?: VulnerabilityScanPolicy;
 }
 
 export interface GcpCloudBuildSubmitRequest extends ProviderSubmitRequest {

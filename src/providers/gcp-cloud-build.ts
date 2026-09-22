@@ -79,8 +79,15 @@ function encodeSubstitutions(substitutions: Record<string, string>): string | un
 export function buildGcloudArguments(request: GcpCloudBuildSubmitRequest): string[] {
   validateProject(request.project);
   validateRegion(request.region);
-  validateSubstitutions(request.substitutions);
-  const encodedSubstitutions = encodeSubstitutions(request.substitutions);
+  if (request.substitutions._BUILDPOUCH_SCAN_POLICY !== undefined) {
+    throw new BuildPouchError("INVALID_CONFIGURATION", "_BUILDPOUCH_SCAN_POLICY is reserved for BuildPouch scan policy delivery.");
+  }
+  const substitutions = request.scanPolicy === undefined ? request.substitutions : {
+    ...request.substitutions,
+    "_BUILDPOUCH_SCAN_POLICY": JSON.stringify(request.scanPolicy)
+  };
+  validateSubstitutions(substitutions);
+  const encodedSubstitutions = encodeSubstitutions(substitutions);
 
   return [
     "builds",

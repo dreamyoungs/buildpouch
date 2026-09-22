@@ -6,6 +6,10 @@ All notable changes to BuildPouch will be documented in this file. The project f
 
 ## [Unreleased]
 
+### Added
+
+- Optional image vulnerability scan policy and a build-runner `security verify` command with a Trivy adapter. `auto` scans afresh until trusted reuse evidence is specified; provider submission alone does not establish verification.
+
 ## [0.1.0] - 2026-08-12
 
 ### Added

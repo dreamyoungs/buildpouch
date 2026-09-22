@@ -20,6 +20,7 @@ import { readFileSync } from "node:fs";
 import { runDependencies } from "./commands/dependencies.js";
 import { runInspect } from "./commands/inspect.js";
 import { runPack } from "./commands/pack.js";
+import { runSecurity } from "./commands/security.js";
 import { runSubmit } from "./commands/submit.js";
 import { BuildPouchError } from "./errors.js";
 
@@ -34,6 +35,7 @@ Commands:
   dependencies Check resolved dependencies without installing packages.
   inspect    Calculate and validate a build context.
   pack       Create a validated build context archive.
+  security   Verify an image scan in a trusted build runner.
   submit     Submit an archive to a build provider.
 
 Options:
@@ -79,6 +81,10 @@ async function run(args: string[]): Promise<number> {
 
   if (firstArgument === "submit") {
     return runSubmit(args.slice(1));
+  }
+
+  if (firstArgument === "security") {
+    return runSecurity(args.slice(1));
   }
 
   process.stderr.write(`Unknown command or option: ${firstArgument}\nRun "buildpouch --help" for usage.\n`);

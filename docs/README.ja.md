@@ -89,6 +89,7 @@ BuildPouchは許可リストを優先する方式を採用します。ビルド�
 | `buildpouch dependencies check` | 利用可能 | パッケージをインストールせず、npm・pnpmの全resolved dependencyを検査してpolicy違反をブロックします。 |
 | `buildpouch inspect` | 利用可能 | ファイルをコピーしたりクラウドプロバイダーへ接続したりせず、コンテキストを算出して検証します。 |
 | `buildpouch pack` | 利用可能 | 検証済みのファイルを一時ディレクトリに配置し、`tar.gz`アーカイブを作成します。 |
+| `buildpouch security verify` | 利用可能 | 設定されたスキャンポリシーに従い、信頼されたビルド実行環境で digest 固定のイメージを検証します。 |
 | `buildpouch submit` | 利用可能 | コンテキストをパッケージ化するか既存のアーカイブを受け取り、設定されたプロバイダーを通じて送信します。 |
 
 Google Cloud Buildは既存の`gcloud` CLIを通じて、NCP NKS BuildKitは既存の`aws`および`kubectl` CLIを通じてサポートされます。プロバイダー固有のビルド設定、Kubernetes Job template、デプロイ動作は、BuildPouchを利用するリポジトリが引き続き所有します。NCP対応は、NCP Object Storage、NKS、Container Registryを接続した実環境のend-to-end検証が完了するまでexperimentalです。
@@ -214,6 +215,29 @@ targets:
 
 Google Cloud Buildの相対的な`config`パスは設定ファイルのディレクトリを基準に解決されます。`--build-config`の上書きは現在の作業ディレクトリを基準に解決されます。ユーザー定義のCloud Build substitution keyは`_`で始まり、大文字、数字、underscoreのみを含める必要があります。Substitutionの値はコマンド出力に表示されるため、secretをsubstitutionとして渡さず、build configurationを通じてSecret Managerを使用してください。
 
+### 任意のイメージ脆弱性スキャン
+
+既存の設定を維持したまま、任意のポリシーを追加できます。
+
+```yaml
+security:
+  vulnerabilityScan:
+    mode: auto
+    scanner: trivy
+    failOnSeverities: [HIGH, CRITICAL]
+    maxDbAgeHours: 24
+```
+
+この版では `auto` と `always` のどちらも新しいスキャンを実行します。信頼できる再利用証拠の契約が未定のため、キャッシュ結果を合格根拠にしません。`skip` には空でない `reason` と、信頼された実行環境の開発用許可が必要です。`skip` にも上記四つのスキャン項目を明記します。重大度と DB の最大経過時間はプロジェクトが指定し、BuildPouch の固定値ではありません。`security` のない設定では scanner は不要です。
+
+イメージをビルドして push した後、信頼された実行ステップで `buildpouch security verify --config buildpouch.yaml --trusted-policy /runner/policy.json --image registry.example.test/app@sha256:<64桁のdigest> --json` を実行します。ポリシー JSON の例は `{"schemaVersion":1,"environmentClass":"protected","allowSkip":false}` です。開発用の例外には `environmentClass: "development"`、`allowSkip: true`、`mode: skip`、理由が必要です。実行側はポリシーファイル、呼び出し、イメージ digest、Trivy 実行ファイルと環境、検証する設定 revision を提出者が変更できないよう管理し、検証失敗でビルドを失敗させ、検証した同じ digest をデプロイする必要があります。検証器は Trivy の実行前に `TRIVY_*` 環境変数を除去し、registry 認証、proxy・CA 設定、`PATH` は実行側が管理します。提出者が指定したファイルパスだけでは信頼できません。
+
+検証器は単独実行の Trivy を直接実行し、提出者が作成した合格 report を受け取りません。digest 固定のイメージ、Trivy 結果の `ArtifactName` と `RepoDigests`、スキャン時刻、隔離した同じキャッシュの `trivy version --format json` による DB metadata を確認します。識別できた client/server の結果は別のサーバー DB 契約が必要なため拒否します。証拠の欠落、期限切れ、古い DB、scanner 障害、遮断対象の脆弱性は失敗します。イメージ config ID を registry manifest digest とみなさず、一致する `RepoDigests` がない結果も失敗します。結果の保存や再利用は行いません。
+
+設定したポリシーは GCP の `_BUILDPOUCH_SCAN_POLICY` substitution または NCP Job の `BUILDPOUCH_SCAN_POLICY` 環境変数として渡されます。これらは実行側への入力ヒントであり、合格証拠や自動 gate ではありません。利用するリポジトリが Cloud Build 設定または Job template に信頼された検証ステップを追加する必要があります。`submit` の成功は provider ビルドの成功のみを示します。既存の `dependencies check` とアプリのテストは独立して維持されます。Scanner のエラーは元の stderr をコピーせず、安全な原因分類を表示します。
+
+Finding の影響評価、VEX 判定、期限付きリスク受容、署名付き証拠、スキャン結果の再利用は未実装です。`SECURITY_SCAN_REJECTED` は失敗した gate であり、レビューや承認を意味しません。検証器は元の scanner report を後で確認するために保存しません。必要な場合、利用側の workflow が独自のアクセス・保存ポリシーで report を保持する必要があります。
+
 ### NCP NKS BuildKit target
 
 `ncp-nks-buildkit`プロバイダーは、BuildPouchのarchive-first契約を維持しながらNCPサービスを使用します。
@@ -225,7 +249,7 @@ Google Cloud Buildの相対的な`config`パスは設定ファイルのディレ
 
 BuildPouchはbucket、NKS cluster、[Container Registry](https://guide.ncloud-docs.com/docs/en/containerregistry-overview)、Kubernetes service account、RBAC、credential、registry pull/push secretを作成しません。実際のarchiveダウンロード、SHA-256検証、展開、BuildKit実行、image push、任意のNKSデプロイはJob templateが担当します。このため、BuildPouchにデプロイの意味を持たせず、build・pushだけを行うtemplateとデプロイまで行うtemplateを分けて運用できます。完了したJobは確認できるように残されるため、自動削除が必要な場合はtemplateに`ttlSecondsAfterFinished`を設定してください。
 
-選択したcontainerには、`BUILDPOUCH_CONTEXT_ENDPOINT`、`BUILDPOUCH_CONTEXT_REGION`、`BUILDPOUCH_CONTEXT_BUCKET`、`BUILDPOUCH_CONTEXT_KEY`、`BUILDPOUCH_CONTEXT_NAME`、`BUILDPOUCH_CONTEXT_SIZE`、`BUILDPOUCH_CONTEXT_SHA256`、`BUILDPOUCH_SUBMISSION_ID`、`BUILDPOUCH_TARGET`が注入されます。同名の既存環境変数は置き換えられます。Templateが所有する`secretKeyRef`、volume、command、image、security context、その他のcontainerは維持されます。
+選択したcontainerには、`BUILDPOUCH_CONTEXT_ENDPOINT`、`BUILDPOUCH_CONTEXT_REGION`、`BUILDPOUCH_CONTEXT_BUCKET`、`BUILDPOUCH_CONTEXT_KEY`、`BUILDPOUCH_CONTEXT_NAME`、`BUILDPOUCH_CONTEXT_SIZE`、`BUILDPOUCH_CONTEXT_SHA256`、`BUILDPOUCH_SUBMISSION_ID`、`BUILDPOUCH_TARGET`が注入されます。スキャンポリシーを設定した場合は `BUILDPOUCH_SCAN_POLICY` も注入されます。注入される名前の既存環境変数は置き換えられます。Templateが所有する`secretKeyRef`、volume、command、image、security context、その他のcontainerは維持されます。
 
 `endpoint`、`region`、`bucket`、`kubeContext`、`namespace`、`jobTemplate`は必須です。`prefix`のデフォルトは`buildpouch`、`container`は`buildpouch`、`timeoutSeconds`は1800、`pollIntervalSeconds`は5です。相対的な`jobTemplate`パスはBuildPouch設定ファイルのディレクトリを基準に解決されます。`awsProfile`はローカルAWS CLI profileだけを選択し、Jobには送信されません。`variables`はJob manifestに表示されるため、credentialやsecretを絶対に含めず、templateのKubernetes Secretを使用してください。
 
